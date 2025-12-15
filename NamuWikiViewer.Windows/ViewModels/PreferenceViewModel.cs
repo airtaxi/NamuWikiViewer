@@ -28,12 +28,10 @@ public partial class PreferenceViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void SavePreferenceCommand() => SavePreference();
-
     public void SavePreference()
     {
         // Update preference model
-        preference.WebViewVerticalScrollBarVisibility = WebViewVerticalScrollBarVisibility;
+        _preference.WebViewVerticalScrollBarVisibility = WebViewVerticalScrollBarVisibility;
 
         Configuration.SetValue("Preference", _preference);
     }
