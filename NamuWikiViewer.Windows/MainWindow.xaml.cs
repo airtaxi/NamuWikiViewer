@@ -1,22 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+﻿using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
+using NamuWikiViewer.Windows.Pages;
 
 namespace NamuWikiViewer.Windows;
 
 public sealed partial class MainWindow : Window
 {
+    public event EventHandler<object> TitleBarBackRequested;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -26,6 +18,12 @@ public sealed partial class MainWindow : Window
 
         AppWindow.SetIcon("Assets/logo.ico");
 
-        MainFrame.Navigate(typeof(Pages.MainPage));
+        MainFrame.Navigate(typeof(MainPage), this);
     }
+
+    public void ToggleBackButton(bool show) => AppTitleBar.IsBackButtonVisible = show;
+
+    private void OnAppTitleBarBackRequested(TitleBar sender, object args) => TitleBarBackRequested?.Invoke(this, args);
+
+    private void OnWindowClosed(object sender, WindowEventArgs args) => BrowserPage.PurgeWebViewCacheForWindow(this);
 }

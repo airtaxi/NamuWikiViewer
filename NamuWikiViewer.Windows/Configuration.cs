@@ -1,11 +1,7 @@
-﻿using NamuWikiViewer.Windows.Models;
-using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using NamuWikiViewer.Commons.Models;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using System.Threading;
 
 namespace SocialServiceWorkerServiceRecordAutomation;
 
@@ -157,6 +153,7 @@ public static class Configuration
 [JsonSourceGenerationOptions()]
 [JsonSerializable(typeof(Dictionary<string, object>))]
 [JsonSerializable(typeof(Preference))]
+[JsonSerializable(typeof(PendingPage))]
 [JsonSerializable(typeof(bool))]
 [JsonSerializable(typeof(int))]
 [JsonSerializable(typeof(string))]

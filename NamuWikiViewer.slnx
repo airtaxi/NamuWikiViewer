@@ -4,6 +4,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="NamuWikiViewer.Commons/NamuWikiViewer.Commons.csproj" Id="d00e6497-5466-43b6-8f96-6a622a278970" />
   <Project Path="NamuWikiViewer.Windows/NamuWikiViewer.Windows.csproj">
     <Platform Solution="*|ARM64" Project="ARM64" />
     <Platform Solution="*|x64" Project="x64" />

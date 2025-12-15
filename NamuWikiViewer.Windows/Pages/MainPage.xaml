@@ -6,7 +6,56 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:NamuWikiViewer.Windows.Pages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:md="using:NamuWikiViewer.Commons.Models"
+    xmlns:root="using:NamuWikiViewer.Windows"
     mc:Ignorable="d">
 
-    <Frame x:Name="MainFrame" />
+    <Grid>
+        <Frame x:Name="MainFrame" Navigated="OnMainFrameNavigated" />
+
+        <ScrollViewer
+            x:Name="PendingPageScrollViewer"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Bottom"
+            HorizontalScrollBarVisibility="Auto"
+            HorizontalScrollMode="Auto"
+            VerticalScrollMode="Disabled">
+            <ItemsRepeater Margin="8" ItemsSource="{x:Bind root:App.GlobalPreferenceViewModel.PendingPages}">
+                <ItemsRepeater.Layout>
+                    <StackLayout Orientation="Horizontal" Spacing="8" />
+                </ItemsRepeater.Layout>
+
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="md:PendingPage">
+                        <StackPanel
+                            Padding="8"
+                            HorizontalAlignment="Left"
+                            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                            BorderBrush="#808080"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            Tag="{x:Bind Id}"
+                            Tapped="OnPendingPageItemTapped"
+                            Translation="0,0,32">
+                            <StackPanel.Shadow>
+                                <ThemeShadow />
+                            </StackPanel.Shadow>
+                            <TextBlock HorizontalAlignment="Center" Text="{x:Bind PageName}" />
+                            <Button
+                                Padding="0"
+                                HorizontalAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnDeletePendingPageButtonClicked"
+                                Tag="{x:Bind Id}">
+                                <SymbolIcon Foreground="{StaticResource SystemAccentColor}" Symbol="Cancel" />
+                            </Button>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+        </ScrollViewer>
+    </Grid>
 </Page>

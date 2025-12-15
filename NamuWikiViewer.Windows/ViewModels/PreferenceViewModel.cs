@@ -1,38 +1,75 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.UI.Xaml.Controls;
-using NamuWikiViewer.Windows.Models;
+using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging.Messages;
+using NamuWikiViewer.Commons.Models;
 using SocialServiceWorkerServiceRecordAutomation;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 
 namespace NamuWikiViewer.Windows.ViewModels;
 
 public partial class PreferenceViewModel : ObservableObject
 {
-    private readonly Preference _preference;
+    public Preference Preference { get; }
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SavePreferenceCommand))]
-    public partial ScrollBarVisibility WebViewVerticalScrollBarVisibility { get; set; }
+    public partial bool HideWebViewScrollBar { get; set; }
+
+    [ObservableProperty]
+    public partial bool BlockAds { get; set; }
+
+    public ObservableCollection<PendingPage> PendingPages { get; }
 
     public PreferenceViewModel()
     {
-        _preference = Configuration.GetValue<Preference>("Preference") ?? new();
+        Preference = Configuration.GetValue<Preference>("Preference") ?? new();
 
         // Initialize properties
-        WebViewVerticalScrollBarVisibility = _preference.WebViewVerticalScrollBarVisibility;
+        HideWebViewScrollBar = Preference.HideWebViewScrollBar;
+
+        PendingPages = new(Preference.PendingPages ?? []);
+        PendingPages.CollectionChanged += OnPendingPagesCollectionChanged;
     }
 
-    [RelayCommand]
+    private void OnPendingPagesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Add)
+        {
+            foreach (PendingPage newItem in e.NewItems)
+            {
+                Preference.PendingPages ??= [];
+                Preference.PendingPages.Add(newItem);
+            }
+            SavePreference();
+        }
+        else if (e.Action == NotifyCollectionChangedAction.Remove)
+        {
+            foreach (PendingPage oldItem in e.OldItems)
+            {
+                Preference.PendingPages?.Remove(oldItem);
+            }
+            SavePreference();
+        }
+    }
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+
+        SavePreference();
+    }
+
     public void SavePreference()
     {
-        // Update preference model
-        _preference.WebViewVerticalScrollBarVisibility = WebViewVerticalScrollBarVisibility;
+        if (Preference == null) return;
 
-        Configuration.SetValue("Preference", _preference);
+        // Update preference model
+        Preference.HideWebViewScrollBar = HideWebViewScrollBar;
+        Preference.BlockAds = BlockAds;
+
+        Configuration.SetValue("Preference", Preference);
+
+        WeakReferenceMessenger.Default.Send(new ValueChangedMessage<Preference>(Preference));
     }
 }
