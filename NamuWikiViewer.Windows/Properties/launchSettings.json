@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NamuWikiViewer.Windows (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "NamuWikiViewer.Windows (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
