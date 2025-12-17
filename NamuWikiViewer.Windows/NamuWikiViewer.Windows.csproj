@@ -43,6 +43,7 @@
 		<PackageReference Include="DevWinUI.Controls" Version="9.7.1" />
 		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7175" />
 		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
+		<PackageReference Include="WinUIEx" Version="2.9.0" />
 	</ItemGroup>
 	<ItemGroup>
 		<Page Update="Pages\BrowserPage.xaml">
@@ -56,6 +57,11 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\NamuWikiViewer.Commons\NamuWikiViewer.Commons.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Page Update="Controls\SettingsDialog.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 
 	<!--

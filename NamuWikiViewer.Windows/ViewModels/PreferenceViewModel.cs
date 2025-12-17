@@ -14,6 +14,9 @@ public partial class PreferenceViewModel : ObservableObject
     public Preference Preference { get; }
 
     [ObservableProperty]
+    public partial bool UsePageHistory { get; set; }
+
+    [ObservableProperty]
     public partial bool HideWebViewScrollBar { get; set; }
 
     [ObservableProperty]
@@ -21,15 +24,54 @@ public partial class PreferenceViewModel : ObservableObject
 
     public ObservableCollection<PendingPage> PendingPages { get; }
 
+    public ObservableCollection<PageHistory> PageHistories { get; }
+
+    public ObservableCollection<PageHistory> ReversedPageHistories { get; }
+
     public PreferenceViewModel()
     {
-        Preference = Configuration.GetValue<Preference>("Preference") ?? new();
+        var preference = Configuration.GetValue<Preference>("Preference") ?? new();
 
         // Initialize properties
-        HideWebViewScrollBar = Preference.HideWebViewScrollBar;
+        UsePageHistory = preference.UsePageHistory;
+        HideWebViewScrollBar = preference.HideWebViewScrollBar;
+        BlockAds = preference.BlockAds;
 
-        PendingPages = new(Preference.PendingPages ?? []);
+        PendingPages = new(preference.PendingPages ?? []);
         PendingPages.CollectionChanged += OnPendingPagesCollectionChanged;
+
+        PageHistories = new(preference.PageHistories ?? []);
+        PageHistories.CollectionChanged += OnPageHistoriesCollectionChanged;
+
+        ReversedPageHistories = new(PageHistories.Reverse());
+
+        Preference = preference;
+    }
+
+    private void OnPageHistoriesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Add)
+        {
+            foreach (PageHistory newItem in e.NewItems)
+            {
+                Preference.PageHistories ??= [];
+                Preference.PageHistories.Add(newItem);
+                ReversedPageHistories.Insert(0, newItem);
+            }
+
+            SavePreference();
+        }
+        else if (e.Action == NotifyCollectionChangedAction.Remove)
+        {
+            foreach (PageHistory oldItem in e.OldItems)
+            {
+                ReversedPageHistories.Remove(oldItem);
+                Preference.PageHistories?.Remove(oldItem);
+            }
+
+            SavePreference();
+        }
+
     }
 
     private void OnPendingPagesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -41,6 +83,7 @@ public partial class PreferenceViewModel : ObservableObject
                 Preference.PendingPages ??= [];
                 Preference.PendingPages.Add(newItem);
             }
+
             SavePreference();
         }
         else if (e.Action == NotifyCollectionChangedAction.Remove)
@@ -49,6 +92,7 @@ public partial class PreferenceViewModel : ObservableObject
             {
                 Preference.PendingPages?.Remove(oldItem);
             }
+
             SavePreference();
         }
     }
@@ -56,6 +100,16 @@ public partial class PreferenceViewModel : ObservableObject
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
+
+        // Clear page history when UsePageHistory is disabled
+        if (e.PropertyName == "UsePageHistory")
+        {
+            if (!UsePageHistory)
+            {
+                PageHistories.Clear();
+                Preference.PageHistories?.Clear();
+            }
+        }
 
         SavePreference();
     }
@@ -65,6 +119,7 @@ public partial class PreferenceViewModel : ObservableObject
         if (Preference == null) return;
 
         // Update preference model
+        Preference.UsePageHistory = UsePageHistory;
         Preference.HideWebViewScrollBar = HideWebViewScrollBar;
         Preference.BlockAds = BlockAds;
 

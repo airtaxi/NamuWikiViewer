@@ -91,7 +91,7 @@ public sealed partial class BrowserPage : Page
         {
             _isFirstNavigation = true;
 
-            _mainWebView = new WebView2();
+            _mainWebView = new WebView2 { Visibility = Visibility.Collapsed };
             WebViewContainer.Content = _mainWebView;
             WebViewCache[_pageName + _pageHash] = _mainWebView;
 
@@ -100,9 +100,13 @@ public sealed partial class BrowserPage : Page
             MainWindowWebViewKeys[_parent.ParentWindow].Add(_pageName + _pageHash);
 
             await _mainWebView.EnsureCoreWebView2Async();
+            _mainWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
 
             _mainWebView.Source = new Uri(BaseUrl + _pageName);
             await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
+
+            if (_pageName != "나무위키:대문" && App.GlobalPreferenceViewModel.UsePageHistory)
+                App.GlobalPreferenceViewModel.PageHistories.Add(new(_pageName));
         }
 
         _mainWebView.CoreWebView2.DOMContentLoaded += OnDOMContentLoaded;
@@ -157,6 +161,8 @@ public sealed partial class BrowserPage : Page
         await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
         await UpdateAdsVisibility(App.GlobalPreferenceViewModel.Preference);
         await InjectNavigationInterceptScriptAsync();
+
+        _mainWebView.Visibility = Visibility.Visible;
     }
 
     private async Task HideHeaderAsync()
@@ -165,24 +171,38 @@ public sealed partial class BrowserPage : Page
             (function() {
                 var style = document.createElement('style');
                 style.type = 'text/css';
-                style.innerHTML = '#app > div:first-child > div:first-child { display: none !important; } #app > div:first-child > div:nth-child(2) > div > div:nth-child(4) > article > div:nth-child(2) { display: none !important; } #app > div:first-child > div:nth-child(2) > div > div:nth-child(4) > div:nth-child(2) > div:nth-child(2) { display: none !important; }';
+                style.id = 'hideHeaderStyle';
                 document.head.appendChild(style);
                 
-                var xpath1 = '/div[1]/div[1]';
-                var element1 = document.evaluate(xpath1, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                if (element1) {
-                    element1.style.display = 'none';
-                }
-                
-                var xpath2 = '/div[1]/div[2]/div/div[4]/article/div[2]';
-                var element2 = document.evaluate(xpath2, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                if (element2) {
-                    element2.style.display = 'none';
-                } else {
-                    var xpath3 = '/div[1]/div[2]/div/div[4]/div[2]/div[2]';
-                    var element3 = document.evaluate(xpath3, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                    if (element3) {
-                        element3.style.display = 'none';
+                var h1 = document.querySelector('h1');
+                if (h1 && h1.parentElement && h1.parentElement.parentElement) {
+                    var headerDiv = h1.parentElement.parentElement;
+                    headerDiv.style.display = 'none';
+                    style.innerHTML += '#' + (headerDiv.id || '') + ' { display: none !important; }';
+                    
+                    // Hide additional header component (first child div of first child div of app)
+                    var appDiv = document.getElementById('app');
+                    if (appDiv && appDiv.firstElementChild && appDiv.firstElementChild.firstElementChild) {
+                        var additionalHeaderDiv = appDiv.firstElementChild.firstElementChild;
+                        additionalHeaderDiv.style.display = 'none';
+                        
+                        // Function to adjust margin based on viewport width
+                        var contentDiv = additionalHeaderDiv.nextElementSibling;
+                        if (contentDiv) {
+                            function adjustMargin() {
+                                if (window.innerWidth < 1024) {
+                                    contentDiv.style.marginTop = '-40px';
+                                } else {
+                                    contentDiv.style.marginTop = '';
+                                }
+                            }
+                            
+                            // Initial adjustment
+                            adjustMargin();
+                            
+                            // Add resize listener
+                            window.addEventListener('resize', adjustMargin);
+                        }
                     }
                 }
             })();
@@ -206,21 +226,17 @@ public sealed partial class BrowserPage : Page
                             style = document.createElement('style');
                             style.id = 'hideAdsStyle';
                             style.type = 'text/css';
-                            style.innerHTML = '#app > div:first-child > div:nth-child(2) > div > div:nth-child(4) > article > div:nth-child(3) { display: none !important; } #app > div:first-child > div:nth-child(2) > div > div:nth-child(4) > div:nth-child(2) > div:nth-child(3) { display: none !important; }';
                             document.head.appendChild(style);
                         }
                         
-                        var xpath1 = '/div[1]/div[2]/div/div[4]/article/div[3]';
-                        var element1 = document.evaluate(xpath1, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                        if (element1) {
-                            element1.style.display = 'none';
-                        } else {
-                            var xpath2 = '/div[1]/div[2]/div/div[4]/div[2]/div[3]';
-                            var element2 = document.evaluate(xpath2, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                            if (element2) {
-                                element2.style.display = 'none';
-                            }
-                        }
+                        // Hide divs with data-google-query-id attribute (Google ads)
+                        style.innerHTML = '[data-google-query-id] { display: none !important; }';
+                        
+                        // Apply display:none directly to existing ad elements
+                        var adDivs = document.querySelectorAll('[data-google-query-id]');
+                        adDivs.forEach(function(div) {
+                            div.style.display = 'none';
+                        });
                     })();
                 ";
                 await _mainWebView.ExecuteScriptAsync(script);
@@ -234,17 +250,11 @@ public sealed partial class BrowserPage : Page
                             style.parentNode.removeChild(style);
                         }
                         
-                        var xpath1 = '/div[1]/div[2]/div/div[4]/article/div[3]';
-                        var element1 = document.evaluate(xpath1, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                        if (element1) {
-                            element1.style.display = '';
-                        } else {
-                            var xpath2 = '/div[1]/div[2]/div/div[4]/div[2]/div[3]';
-                            var element2 = document.evaluate(xpath2, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                            if (element2) {
-                                element2.style.display = '';
-                            }
-                        }
+                        // Restore display for ad elements
+                        var adDivs = document.querySelectorAll('[data-google-query-id]');
+                        adDivs.forEach(function(div) {
+                            div.style.display = '';
+                        });
                     })();
                 ";
                 await _mainWebView.ExecuteScriptAsync(script);
@@ -260,6 +270,8 @@ public sealed partial class BrowserPage : Page
         if (url.StartsWith(BaseUrl))
         {
             var pageName = HttpUtility.UrlDecode(url[BaseUrl.Length..]);
+            if (pageName.Contains('#')) return;
+
             _parent.NavigateToPage(pageName);
         }
     }
@@ -267,6 +279,8 @@ public sealed partial class BrowserPage : Page
     private void OnNavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
         var url = args.Uri;
+
+        if (url.Contains('#')) return;
 
         if (_isFirstNavigation)
         {
@@ -279,6 +293,8 @@ public sealed partial class BrowserPage : Page
         if (url.StartsWith(BaseUrl))
         {
             var pageName = HttpUtility.UrlDecode(url[BaseUrl.Length..]);
+            if (pageName.Contains('#')) return;
+
             _parent.NavigateToPage(pageName);
         }
     }
@@ -292,14 +308,14 @@ public sealed partial class BrowserPage : Page
         var pageName = _pendingPageName;
         if (string.IsNullOrEmpty(pageName))
         {
-            await MessageBox.ShowErrorAsync(true, "잘못된 페이지 이름입니다.", "오류");
+            await MessageBox.ShowErrorAsync(true, _parent.ParentWindow, "잘못된 페이지 이름입니다.", "오류");
             return;
         }
 
         var alreadyExists = App.GlobalPreferenceViewModel.PendingPages.Any(p => p.PageName == pageName);
         if (alreadyExists)
         {
-            var result = await MessageBox.ShowAsync(true, "이미 추가된 페이지입니다. 그래도 추가하시겠습니까?", "경고", MessageBoxButtons.YesNo);
+            var result = await MessageBox.ShowAsync(true, _parent.ParentWindow, "이미 추가된 페이지입니다. 그래도 추가하시겠습니까?", "경고", MessageBoxButtons.YesNo);
             if (result == MessageBoxResult.NO) return;
         }
 
@@ -333,6 +349,15 @@ public sealed partial class BrowserPage : Page
                     }
                     
                     if (target && target.href) {
+                        // Check if it's a hash link within the same page
+                        var currentUrl = window.location.href.split('#')[0];
+                        var targetUrl = target.href.split('#')[0];
+                        
+                        // If it's a hash navigation on the same page, allow default behavior
+                        if (currentUrl === targetUrl && target.href.includes('#')) {
+                            return true;
+                        }
+                        
                         e.preventDefault();
                         e.stopPropagation();
                         window.chrome.webview.postMessage(target.href);

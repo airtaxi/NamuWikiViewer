@@ -10,7 +10,10 @@
     mc:Ignorable="d">
 
     <Grid>
+        <Rectangle Fill="{ThemeResource ThemeColor}" />
+
         <Frame x:Name="WebViewContainer" />
+
         <Grid
             x:Name="PendingPageNameGrid"
             Padding="16"
@@ -26,15 +29,16 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+
             <TextBlock
                 x:Name="PendingPageNameTextBlock"
                 Grid.Column="0"
+                VerticalAlignment="Center"
                 Text="다음에 볼 페이지" />
-            <Button
+
+            <HyperlinkButton
                 Grid.Column="1"
-                Padding="0"
-                Background="Transparent"
-                BorderBrush="Transparent"
+                Padding="2"
                 Click="OnAddPendingPageButtonClicked"
                 Content="다음에 보기"
                 FontWeight="ExtraBold"

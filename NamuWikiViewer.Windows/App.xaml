@@ -13,6 +13,14 @@
                 <ResourceDictionary Source="ms-appx:///DevWinUI.Controls/Themes/Generic.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="ThemeColor">#FFFFFF</Color>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="ThemeColor">#000000</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
 
             <!--  Official Colors  -->
 
