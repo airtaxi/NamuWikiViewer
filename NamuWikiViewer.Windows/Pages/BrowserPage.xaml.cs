@@ -10,6 +10,7 @@ using NamuWikiViewer.Windows.Messages;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using System.Web;
+using Windows.System;
 using WinRT;
 
 namespace NamuWikiViewer.Windows.Pages;
@@ -55,6 +56,96 @@ public sealed partial class BrowserPage : Page
         _pageName = "나무위키:대문";
 
         WeakReferenceMessenger.Default.Register<ValueChangedMessage<Preference>>(this, OnPreferenceChanged);
+    }
+
+    private async Task InjectNavigationInterceptScriptAsync()
+    {
+        var script = @"
+            (function() {
+                // Prevent location changes
+                var originalPushState = history.pushState;
+                var originalReplaceState = history.replaceState;
+                
+                history.pushState = function() {
+                    originalPushState.apply(history, arguments);
+                };
+                
+                history.replaceState = function() {
+                    originalReplaceState.apply(history, arguments);
+                };
+                
+                // Intercept all link clicks
+                document.addEventListener('click', function(e) {
+                    var target = e.target;
+                    while (target && target.tagName !== 'A') {
+                        target = target.parentElement;
+                    }
+                    
+                    if (target && target.href) {
+                        // Check if it's a hash link within the same page
+                        var currentUrl = window.location.href.split('#')[0];
+                        var targetUrl = target.href.split('#')[0];
+                        
+                        // If it's a hash navigation on the same page, allow default behavior
+                        if (currentUrl === targetUrl && target.href.includes('#')) {
+                            return true;
+                        }
+                        
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.chrome.webview.postMessage(target.href);
+                        return false;
+                    }
+                }, true);
+                
+                // Override window.location setter
+                var originalLocation = window.location;
+                Object.defineProperty(window, 'location', {
+                    get: function() { return originalLocation; },
+                    set: function(url) {
+                        if (url.startsWith('" + BaseUrl + @"')) {
+                            window.chrome.webview.postMessage(url);
+                        }
+                    }
+                });
+            })();
+        ";
+
+        await _mainWebView.ExecuteScriptAsync(script);
+    }
+
+    private async Task UpdateScrollBarVisibilityAsync(Preference newPreference)
+    {
+        try
+        {
+            if (_mainWebView?.CoreWebView2 == null) return;
+
+            if (newPreference.HideWebViewScrollBar) await _mainWebView.ExecuteScriptAsync("document.querySelector('body').style.overflow='scroll';var style=document.createElement('style');style.type='text/css';style.innerHTML='::-webkit-scrollbar{display:none}';document.getElementsByTagName('body')[0].appendChild(style)");
+            else await _mainWebView.ExecuteScriptAsync("document.querySelector('body').style.overflow='auto';var styles=document.getElementsByTagName('style');for(var i=0;i<styles.length;i++){if(styles[i].innerHTML==='::-webkit-scrollbar{display:none}'){styles[i].parentNode.removeChild(styles[i]);}}");
+        }
+        catch (ObjectDisposedException) { } // WebView might be disposed
+    }
+
+    private async Task ProcessUrlAsync(string url)
+    {
+        if (url.StartsWith(BaseUrl))
+        {
+            var pageName = HttpUtility.UrlDecode(url[BaseUrl.Length..]);
+            if (pageName.Contains('#')) return;
+
+            _parent.NavigateToPage(pageName);
+        }
+        else if (url.StartsWith("https://namu.wiki/Go?q="))
+        {
+            var query = HttpUtility.ParseQueryString(new Uri(url).Query).Get("q");
+            if (!string.IsNullOrEmpty(query))
+            {
+                var decodedQuery = HttpUtility.UrlDecode(query);
+                _parent.NavigateToPage(decodedQuery);
+            }
+            else await Launcher.LaunchUriAsync(new Uri(url));
+        }
+        else await Launcher.LaunchUriAsync(new Uri(url));
     }
 
     private async void OnPreferenceChanged(object recipient, ValueChangedMessage<Preference> message)
@@ -263,24 +354,16 @@ public sealed partial class BrowserPage : Page
         catch (ObjectDisposedException) { } // WebView might be disposed
     }
 
-    private void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
         var url = args.TryGetWebMessageAsString();
-        
-        if (url.StartsWith(BaseUrl))
-        {
-            var pageName = HttpUtility.UrlDecode(url[BaseUrl.Length..]);
-            if (pageName.Contains('#')) return;
 
-            _parent.NavigateToPage(pageName);
-        }
+        await ProcessUrlAsync(url);
     }
 
-    private void OnNavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    private async void OnNavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
         var url = args.Uri;
-
-        if (url.Contains('#')) return;
 
         if (_isFirstNavigation)
         {
@@ -290,13 +373,7 @@ public sealed partial class BrowserPage : Page
 
         args.Cancel = true;
 
-        if (url.StartsWith(BaseUrl))
-        {
-            var pageName = HttpUtility.UrlDecode(url[BaseUrl.Length..]);
-            if (pageName.Contains('#')) return;
-
-            _parent.NavigateToPage(pageName);
-        }
+        await ProcessUrlAsync(url);
     }
 
     private void OnNewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args) => args.Handled = true;
@@ -323,73 +400,5 @@ public sealed partial class BrowserPage : Page
         App.GlobalPreferenceViewModel.PendingPages.Add(pendingPage);
 
         WeakReferenceMessenger.Default.Send(new PendingPageAddedMessage(pendingPage));
-    }
-
-    private async Task InjectNavigationInterceptScriptAsync()
-    {
-        var script = @"
-            (function() {
-                // Prevent location changes
-                var originalPushState = history.pushState;
-                var originalReplaceState = history.replaceState;
-                
-                history.pushState = function() {
-                    originalPushState.apply(history, arguments);
-                };
-                
-                history.replaceState = function() {
-                    originalReplaceState.apply(history, arguments);
-                };
-                
-                // Intercept all link clicks
-                document.addEventListener('click', function(e) {
-                    var target = e.target;
-                    while (target && target.tagName !== 'A') {
-                        target = target.parentElement;
-                    }
-                    
-                    if (target && target.href) {
-                        // Check if it's a hash link within the same page
-                        var currentUrl = window.location.href.split('#')[0];
-                        var targetUrl = target.href.split('#')[0];
-                        
-                        // If it's a hash navigation on the same page, allow default behavior
-                        if (currentUrl === targetUrl && target.href.includes('#')) {
-                            return true;
-                        }
-                        
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.chrome.webview.postMessage(target.href);
-                        return false;
-                    }
-                }, true);
-                
-                // Override window.location setter
-                var originalLocation = window.location;
-                Object.defineProperty(window, 'location', {
-                    get: function() { return originalLocation; },
-                    set: function(url) {
-                        if (url.startsWith('" + BaseUrl + @"')) {
-                            window.chrome.webview.postMessage(url);
-                        }
-                    }
-                });
-            })();
-        ";
-
-        await _mainWebView.ExecuteScriptAsync(script);
-    }
-
-    private async Task UpdateScrollBarVisibilityAsync(Preference newPreference)
-    {
-        try
-        {
-            if (_mainWebView?.CoreWebView2 == null) return;
-
-            if (newPreference.HideWebViewScrollBar) await _mainWebView.ExecuteScriptAsync("document.querySelector('body').style.overflow='scroll';var style=document.createElement('style');style.type='text/css';style.innerHTML='::-webkit-scrollbar{display:none}';document.getElementsByTagName('body')[0].appendChild(style)");
-            else await _mainWebView.ExecuteScriptAsync("document.querySelector('body').style.overflow='auto';var styles=document.getElementsByTagName('style');for(var i=0;i<styles.length;i++){if(styles[i].innerHTML==='::-webkit-scrollbar{display:none}'){styles[i].parentNode.removeChild(styles[i]);}}");
-        }
-        catch (ObjectDisposedException) { } // WebView might be disposed
     }
 }
