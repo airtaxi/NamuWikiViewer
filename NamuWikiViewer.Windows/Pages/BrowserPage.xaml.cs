@@ -63,8 +63,8 @@ public sealed partial class BrowserPage : Page
             var webView = page?.WebView;
             if (page != null && webView != null)
             {
+                webView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
                 webView.CoreWebView2.DOMContentLoaded -= page.OnDOMContentLoaded;
-                webView.CoreWebView2.NewWindowRequested -= page.OnNewWindowRequested;
                 webView.CoreWebView2.WebMessageReceived -= page.OnWebMessageReceived;
                 webView.CoreWebView2.NavigationStarting -= page.OnNavigationStarting;
                 webView.CoreWebView2.ContextMenuRequested -= page.OnContextMenuRequested;
@@ -374,6 +374,72 @@ public sealed partial class BrowserPage : Page
         catch (ObjectDisposedException) { } // WebView might be disposed
     }
 
+    private async Task QueryAutoSuggestionAsync(string queryText)
+    {
+        if (string.IsNullOrWhiteSpace(queryText))
+        {
+            WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage(_parent.ParentWindow, []));
+            return;
+        }
+
+        try
+        {
+            var escapedQuery = HttpUtility.JavaScriptStringEncode(queryText);
+            var script = $$"""
+                (async function() {
+                    var sendResults = (results) => {
+                        var message = {
+                            type: 'suggestion',
+                            query: '{{escapedQuery}}',
+                            items: results
+                        };
+                        window.chrome.webview.postMessage(JSON.stringify(message));
+                    };
+
+                    var input = document.querySelector('input[type="search"]');
+                    if (!input) { sendResults([]); return; }
+
+                    var nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                    nativeSetter.call(input, '{{escapedQuery}}');
+
+                    input.dispatchEvent(new InputEvent('input', {
+                        bubbles: true,
+                        inputType: 'insertText',
+                        data: '{{escapedQuery}}',
+                    }));
+
+                    var form = input.parentElement;
+                    if (!form) { sendResults([]); return; }
+                    
+                    var suggestionsDiv = form.nextElementSibling;
+                    if (suggestionsDiv) suggestionsDiv = suggestionsDiv.nextElementSibling;
+                    if (suggestionsDiv) suggestionsDiv = suggestionsDiv.nextElementSibling;
+
+                    if (!suggestionsDiv) { sendResults([]); return; }
+
+                    var observer = new MutationObserver((mutations, obs) => {
+                        var links = Array.from(suggestionsDiv.querySelectorAll('a'));
+                        var results = links.map(a => a.innerText);
+                        obs.disconnect();
+                        sendResults(results);
+                    });
+
+                    observer.observe(suggestionsDiv, { childList: true, subtree: true, attributes: true });
+
+                    setTimeout(() => {
+                        observer.disconnect();
+                        var links = Array.from(suggestionsDiv.querySelectorAll('a'));
+                        var results = links.map(a => a.innerText);
+                        sendResults(results);
+                    }, 1000);
+                })();
+            """;
+
+            await WebView.ExecuteScriptAsync(script);
+        }
+        catch { }
+    }
+
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
@@ -558,7 +624,7 @@ public sealed partial class BrowserPage : Page
         await ProcessUrlAsync(url);
     }
 
-    public void OnNewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args) => args.Handled = true;
+    public static void OnNewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args) => args.Handled = true;
 
     private async void OnAddPendingPageButtonClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
@@ -621,70 +687,4 @@ public sealed partial class BrowserPage : Page
     }
 
     private async void OnFontScaleChangedMessageReceived(object recipient, FontScaleChangedMessage message) => await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
-
-    private async Task QueryAutoSuggestionAsync(string queryText)
-    {
-        if (string.IsNullOrWhiteSpace(queryText))
-        {
-            WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage(_parent.ParentWindow, []));
-            return;
-        }
-
-        try
-        {
-            var escapedQuery = HttpUtility.JavaScriptStringEncode(queryText);
-            var script = $$"""
-                (async function() {
-                    var sendResults = (results) => {
-                        var message = {
-                            type: 'suggestion',
-                            query: '{{escapedQuery}}',
-                            items: results
-                        };
-                        window.chrome.webview.postMessage(JSON.stringify(message));
-                    };
-
-                    var input = document.querySelector('input[type="search"]');
-                    if (!input) { sendResults([]); return; }
-
-                    var nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-                    nativeSetter.call(input, '{{escapedQuery}}');
-
-                    input.dispatchEvent(new InputEvent('input', {
-                        bubbles: true,
-                        inputType: 'insertText',
-                        data: '{{escapedQuery}}',
-                    }));
-
-                    var form = input.parentElement;
-                    if (!form) { sendResults([]); return; }
-                    
-                    var suggestionsDiv = form.nextElementSibling;
-                    if (suggestionsDiv) suggestionsDiv = suggestionsDiv.nextElementSibling;
-                    if (suggestionsDiv) suggestionsDiv = suggestionsDiv.nextElementSibling;
-
-                    if (!suggestionsDiv) { sendResults([]); return; }
-
-                    var observer = new MutationObserver((mutations, obs) => {
-                        var links = Array.from(suggestionsDiv.querySelectorAll('a'));
-                        var results = links.map(a => a.innerText);
-                        obs.disconnect();
-                        sendResults(results);
-                    });
-
-                    observer.observe(suggestionsDiv, { childList: true, subtree: true, attributes: true });
-
-                    setTimeout(() => {
-                        observer.disconnect();
-                        var links = Array.from(suggestionsDiv.querySelectorAll('a'));
-                        var results = links.map(a => a.innerText);
-                        sendResults(results);
-                    }, 1000);
-                })();
-            """;
-
-            await WebView.ExecuteScriptAsync(script);
-        }
-        catch { }
-    }
 }
