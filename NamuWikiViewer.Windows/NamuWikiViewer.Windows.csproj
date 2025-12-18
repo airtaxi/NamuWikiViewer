@@ -48,7 +48,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Page Update="Controls\InformationDialog.xaml">
-		  <SubType>Designer</SubType>
+			<SubType>Designer</SubType>
 		</Page>
 		<Page Update="Pages\BrowserPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
@@ -60,12 +60,12 @@
 		</Page>
 	</ItemGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\NamuWikiViewer.Commons\NamuWikiViewer.Commons.csproj" />
+		<ProjectReference Include="..\NamuWikiViewer.Commons\NamuWikiViewer.Commons.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-	  <Page Update="Controls\SettingsDialog.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
+		<Page Update="Controls\SettingsDialog.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
 	</ItemGroup>
 
 	<!--
@@ -85,5 +85,18 @@
 		<PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
 		<DefaultLanguage>ko-KR</DefaultLanguage>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+	
+	<!-- Store Properties -->
+	<PropertyGroup>
+		<GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+		<AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+		<AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+		<AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+		<GenerateTestArtifacts>True</GenerateTestArtifacts>
+		<AppxBundle>Always</AppxBundle>
+		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+		<AppxBundlePlatforms>x86|x64|arm64</AppxBundlePlatforms>
+		<PackageCertificateKeyFile>NamuWikiViewer.Windows_TemporaryKey.pfx</PackageCertificateKeyFile>
 	</PropertyGroup>
 </Project>
