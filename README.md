@@ -10,11 +10,6 @@
 <img width="2196" height="1380" alt="Screenshot3" src="https://github.com/user-attachments/assets/90f4c481-99ef-42cb-bf9c-d96dfeb72c56" />
 
 
-## 개발자
-
-- **airtaxi (Howon Lee)**
-
-
 ## 주요 기능
 
 - **쾌적한 열람 환경**: 불필요한 요소를 제거하고 나무위키 열람에 최적화된 UI를 제공합니다.
@@ -47,6 +42,9 @@
 | **RestSharp** | REST 및 HTTP API 클라이언트 | Apache-2.0 License | [GitHub](https://github.com/restsharp/RestSharp) |
 | **WinUIEx** | WinUI 확장 라이브러리 | MIT License | [GitHub](https://github.com/dotMorten/WinUIEx) |
 
+## 개발자
+
+- **airtaxi (Howon Lee)**
 
 ## 라이선스 (License)
 
