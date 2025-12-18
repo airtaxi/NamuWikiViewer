@@ -14,6 +14,7 @@ public sealed partial class MainPage : Page
 {
     public MainWindow ParentWindow { get; private set; }
     public Frame AppFrame => MainFrame;
+    public int BackStackDepth => MainFrame.BackStackDepth;
 
     private bool _isMenuOpen = false;
     private bool _isAnimating = false;
@@ -29,14 +30,19 @@ public sealed partial class MainPage : Page
     {
         base.OnNavigatedTo(e);
 
-        ParentWindow = e.Parameter as MainWindow;
+        if (e.Parameter is not (MainWindow mainWindow, string pageName)) return;
+
+        ParentWindow = mainWindow;
 
         if (e.NavigationMode == NavigationMode.New)
         {
             ParentWindow.TitleBarBackRequested += OnParentTitleBarBackRequested;
             ParentWindow.TitleBarPaneToggleRequested += OnParentTitleBarPaneToggleRequested;
             ParentWindow.TitleBarHomeRequested += OnParentTitleBarHomeRequested;
-            MainFrame.Navigate(typeof(BrowserPage), this);
+
+            MainFrame.Navigate(typeof(BrowserPage), (pageName, Guid.NewGuid().ToString(), this));
+
+            if (pageName != "나무위키:대문") ParentWindow.ToggleHomeButton(true);
         }
     }
 
@@ -125,7 +131,7 @@ public sealed partial class MainPage : Page
 
         var hasBackstack = frame.BackStackDepth > 0;
         ParentWindow.ToggleBackButton(hasBackstack);
-        ParentWindow.ToggleHomeButton(hasBackstack);
+        // ToggleHomeButton should be set at OnNavigatedTo because this method lacks navigation parameter info
 
         if (frame.Content is BrowserPage)
         {
@@ -164,6 +170,24 @@ public sealed partial class MainPage : Page
 
         NavigateToPage(pendingPage.PageName);
         App.GlobalPreferenceViewModel.PendingPages.Remove(pendingPage);
+    }
+
+    private async void OnOpenNewWindowButtonClicked(object sender, RoutedEventArgs e)
+    {
+        var element = sender as FrameworkElement;
+        if (element.Tag is not string id)
+        {
+            await MessageBox.ShowAsync(true, ParentWindow, "페이지 ID가 올바르지 않습니다", "오류");
+            return;
+        }
+
+        var pendingPage = App.GlobalPreferenceViewModel.PendingPages.FirstOrDefault(p => p.Id == id);
+        if (pendingPage == null) return; // Deleted
+
+        App.GlobalPreferenceViewModel.PendingPages.Remove(pendingPage);
+
+        var window = new MainWindow(pendingPage.PageName);
+        window.Activate();
     }
 
     private async void OnPendingPageAddedMessageReceived(object _, PendingPageAddedMessage __)

@@ -70,7 +70,19 @@
                             <StackPanel.Shadow>
                                 <ThemeShadow />
                             </StackPanel.Shadow>
+
+                            <Button
+                                Padding="0"
+                                HorizontalAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnOpenNewWindowButtonClicked"
+                                Tag="{x:Bind Id}">
+                                <FontIcon Glyph="&#xE8A7;" />
+                            </Button>
+
                             <TextBlock HorizontalAlignment="Center" Text="{x:Bind PageName}" />
+
                             <Button
                                 Padding="0"
                                 HorizontalAlignment="Center"

@@ -378,13 +378,13 @@ public sealed partial class BrowserPage : Page
     {
         base.OnNavigatedTo(e);
 
-        if (e.Parameter is MainPage mainPage) _parent = mainPage;
-        else if (e.Parameter is (string pageName, string pageHash, MainPage mainPage2))
-        {
-            PageName = pageName;
-            _pageHash = pageHash;
-            _parent = mainPage2;
-        }
+        if (e.Parameter is not (string pageName, string pageHash, MainPage mainPage)) return;
+
+        PageName = pageName;
+        _pageHash = pageHash;
+        _parent = mainPage;
+
+        _parent.ParentWindow.ToggleHomeButton(_parent.BackStackDepth > 0 || pageName != "나무위키:대문");
 
         WeakReferenceMessenger.Default.Send(new SetAutoSuggestBoxTextMessage(_parent.ParentWindow, PageName));
 
@@ -542,6 +542,8 @@ public sealed partial class BrowserPage : Page
 
     public async void OnNavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
+        if (args.IsRedirected) return;
+
         var url = args.Uri;
 
         if (_isFirstNavigation)
@@ -551,6 +553,7 @@ public sealed partial class BrowserPage : Page
         }
 
         args.Cancel = true;
+
 
         await ProcessUrlAsync(url);
     }

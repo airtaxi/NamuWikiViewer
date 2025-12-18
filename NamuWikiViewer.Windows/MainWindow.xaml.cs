@@ -17,7 +17,7 @@ public sealed partial class MainWindow : WindowEx
 
     private readonly ObservableCollection<string> _autoSuggestionItems = new();
 
-    public MainWindow()
+    public MainWindow(string pageToOpen = "나무위키:대문")
     {
         InitializeComponent();
 
@@ -31,7 +31,7 @@ public sealed partial class MainWindow : WindowEx
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxItemsSourceMessage>(this, OnAutoSuggestBoxItemsSourceMessageReceived);
         WeakReferenceMessenger.Default.Register<SetAutoSuggestBoxTextMessage>(this, OnSetAutoSuggestBoxTextMessageReceived);
 
-        MainFrame.Navigate(typeof(MainPage), this);
+        MainFrame.Navigate(typeof(MainPage), (this, pageToOpen));
     }
 
     public void ToggleHomeButton(bool show) => HomeButton.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
