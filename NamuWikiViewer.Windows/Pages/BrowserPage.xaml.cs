@@ -23,7 +23,7 @@ namespace NamuWikiViewer.Windows.Pages;
 public sealed partial class BrowserPage : Page
 {
     // For caching WebView2 instances (to preserve state)
-    private static readonly Dictionary<string, WebView2> WebViewCache = [];
+    private static readonly Dictionary<string, BrowserPage> PageCache = [];
 
     // To track WebView2 instances per MainWindow (to prevent memory leaks)
     private static readonly Dictionary<MainWindow, List<string>> MainWindowWebViewKeys = [];
@@ -34,26 +34,59 @@ public sealed partial class BrowserPage : Page
     {
         if (MainWindowWebViewKeys.TryGetValue(window, out var keys))
         {
-            foreach (var key in keys)
+            var pages = PageCache.Where(x => keys.Contains(x.Key)).ToList();
+            DisposeCaches(window, pages);
+        }
+    }
+
+    public static void DisposeAllWithoutCurrentPage(MainWindow mainWindow)
+    {
+        var keys = MainWindowWebViewKeys[mainWindow];
+        var pages = PageCache.Where(x => keys.Contains(x.Key)).ToList();
+        if (pages.Count == 0) return;
+
+        var firstPage = pages.FirstOrDefault();
+        var mainPage = firstPage.Value._parent;
+
+        var currentPage = mainPage.GetCurrentBrowserPage();
+
+        var pagesWithoutCurrent = pages.Where(x => x.Value != currentPage);
+
+        DisposeCaches(mainWindow, pagesWithoutCurrent);
+    }
+
+    private static void DisposeCaches(MainWindow mainWindow, IEnumerable<KeyValuePair<string, BrowserPage>> pairs)
+    {
+        foreach (var pair in pairs.ToList())
+        {
+            var page = pair.Value;
+            var webView = page?.WebView;
+            if (page != null && webView != null)
             {
-                if (WebViewCache.TryGetValue(key, out var _))
-                {
-                    WebViewCache.Remove(key);
-                }
+                webView.CoreWebView2.DOMContentLoaded -= page.OnDOMContentLoaded;
+                webView.CoreWebView2.NewWindowRequested -= page.OnNewWindowRequested;
+                webView.CoreWebView2.WebMessageReceived -= page.OnWebMessageReceived;
+                webView.CoreWebView2.NavigationStarting -= page.OnNavigationStarting;
+                webView.CoreWebView2.ContextMenuRequested -= page.OnContextMenuRequested;
+
+                webView.Close();
             }
 
-            MainWindowWebViewKeys.Remove(window);
+            PageCache.Remove(pair.Key);
+
+            MainWindowWebViewKeys.TryGetValue(mainWindow, out var keys);
+            keys?.Remove(pair.Key);
         }
     }
 
     public string PageName { get; private set; }
+    public WebView2 WebView { get; private set; }
 
     private bool IsActive => (Page)_parent.AppFrame.Content == this;
 
     private bool _isFirstNavigation;
     private string _pageHash;
     private MainPage _parent;
-    private WebView2 _mainWebView;
 
     private string _pendingPageName;
     private CancellationTokenSource _pendingPageNameCts;
@@ -66,9 +99,9 @@ public sealed partial class BrowserPage : Page
         PageName = "나무위키:대문";
 
         WeakReferenceMessenger.Default.Register<ValueChangedMessage<Preference>>(this, OnPreferenceChanged);
+        WeakReferenceMessenger.Default.Register<FontScaleChangedMessage>(this, OnFontScaleChangedMessageReceived);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxQuerySubmittedMessage>(this, OnAutoSuggestBoxQuerySubmittedMessageReceived);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxTextChangedMessage>(this, OnAutoSuggestBoxTextChangedMessageReceived);
-        WeakReferenceMessenger.Default.Register<FontScaleChangedMessage>(this, OnFontScaleChangedMessageReceived);
     }
 
     private async Task InjectNavigationInterceptScriptAsync()
@@ -124,31 +157,31 @@ public sealed partial class BrowserPage : Page
             })();
         ";
 
-        await _mainWebView.ExecuteScriptAsync(script);
+        await WebView.ExecuteScriptAsync(script);
     }
 
     private async Task UpdateScrollBarVisibilityAsync(Preference newPreference)
     {
         try
         {
-            if (_mainWebView?.CoreWebView2 == null) return;
+            if (WebView?.CoreWebView2 == null) return;
 
-            if (newPreference.HideWebViewScrollBar) await _mainWebView.ExecuteScriptAsync("document.querySelector('body').style.overflow='scroll';var style=document.createElement('style');style.type='text/css';style.innerHTML='::-webkit-scrollbar{display:none}';document.getElementsByTagName('body')[0].appendChild(style)");
-            else await _mainWebView.ExecuteScriptAsync("document.querySelector('body').style.overflow='auto';var styles=document.getElementsByTagName('style');for(var i=0;i<styles.length;i++){if(styles[i].innerHTML==='::-webkit-scrollbar{display:none}'){styles[i].parentNode.removeChild(styles[i]);}}");
+            if (newPreference.HideWebViewScrollBar) await WebView.ExecuteScriptAsync("document.querySelector('body').style.overflow='scroll';var style=document.createElement('style');style.type='text/css';style.innerHTML='::-webkit-scrollbar{display:none}';document.getElementsByTagName('body')[0].appendChild(style)");
+            else await WebView.ExecuteScriptAsync("document.querySelector('body').style.overflow='auto';var styles=document.getElementsByTagName('style');for(var i=0;i<styles.length;i++){if(styles[i].innerHTML==='::-webkit-scrollbar{display:none}'){styles[i].parentNode.removeChild(styles[i]);}}");
         }
         catch (ObjectDisposedException) { } // WebView might be disposed
     }
 
     private async Task UpdateFontScaleAsync(Preference preference)
     {
-        if (_mainWebView?.CoreWebView2 == null) return;
+        if (WebView?.CoreWebView2 == null) return;
 
         var script = $$"""
             (function() {
                 document.body.style.zoom = '{{preference.FontScale}}';
             })();
         """;
-        try { await _mainWebView.ExecuteScriptAsync(script); }
+        try { await WebView.ExecuteScriptAsync(script); }
         catch (ObjectDisposedException) { } // WebView might be disposed
     }
 
@@ -182,7 +215,7 @@ public sealed partial class BrowserPage : Page
     {
         _lastQueryText = null;
         _autoSuggestCts?.Cancel();
-        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage([]));
+        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage(_parent.ParentWindow, []));
 
         _parent.ParentWindow.ShowLoading();
         try
@@ -240,7 +273,7 @@ public sealed partial class BrowserPage : Page
             })();
         ";
 
-        await _mainWebView.ExecuteScriptAsync(script);
+        await WebView.ExecuteScriptAsync(script);
     }
 
     private async Task HideHeaderAsync()
@@ -286,14 +319,14 @@ public sealed partial class BrowserPage : Page
             })();
         ";
 
-        await _mainWebView.ExecuteScriptAsync(script);
+        await WebView.ExecuteScriptAsync(script);
     }
 
     private async Task UpdateAdsVisibilityAsync(Preference preference)
     {
         try
         {
-            if (_mainWebView?.CoreWebView2 == null) return;
+            if (WebView?.CoreWebView2 == null) return;
 
             if (preference.BlockAds)
             {
@@ -317,7 +350,7 @@ public sealed partial class BrowserPage : Page
                         });
                     })();
                 ";
-                await _mainWebView.ExecuteScriptAsync(script);
+                await WebView.ExecuteScriptAsync(script);
             }
             else
             {
@@ -335,7 +368,7 @@ public sealed partial class BrowserPage : Page
                         });
                     })();
                 ";
-                await _mainWebView.ExecuteScriptAsync(script);
+                await WebView.ExecuteScriptAsync(script);
             }
         }
         catch (ObjectDisposedException) { } // WebView might be disposed
@@ -353,80 +386,85 @@ public sealed partial class BrowserPage : Page
             _parent = mainPage2;
         }
 
-        WeakReferenceMessenger.Default.Send(new SetAutoSuggestBoxTextMessage(PageName));
+        WeakReferenceMessenger.Default.Send(new SetAutoSuggestBoxTextMessage(_parent.ParentWindow, PageName));
 
         var disableCache = App.GlobalPreferenceViewModel.Preference.DisableWebViewCache;
 
-        if (!disableCache && WebViewCache.TryGetValue(PageName + _pageHash, out var cachedWebView))
+        if (!disableCache && PageCache.TryGetValue(PageName + _pageHash, out var cachedPage) && cachedPage != null)
         {
-            _mainWebView = cachedWebView;
+            WebView = cachedPage.WebView;
 
-            if (_mainWebView.Parent is Grid parentGrid)
+            if (WebView.Parent is Grid parentGrid)
             {
-                parentGrid.Children.Remove(_mainWebView);
+                parentGrid.Children.Remove(WebView);
             }
 
             await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
             await UpdateAdsVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
             await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
 
-            WebViewContainer.Content = _mainWebView;
+            WebViewContainer.Content = WebView;
         }
         else
         {
             _isFirstNavigation = true;
 
-            _mainWebView = new WebView2 { Visibility = Visibility.Collapsed };
-            WebViewContainer.Content = _mainWebView;
+            WebView = new WebView2 { Visibility = Visibility.Collapsed };
+            WebViewContainer.Content = WebView;
 
             if (!disableCache)
             {
-                WebViewCache[PageName + _pageHash] = _mainWebView;
+                PageCache[PageName + _pageHash] = this;
 
                 // Track WebView keys for the parent MainWindow (to prevent memory leaks)
                 if (!MainWindowWebViewKeys.ContainsKey(_parent.ParentWindow)) MainWindowWebViewKeys[_parent.ParentWindow] = [];
                 MainWindowWebViewKeys[_parent.ParentWindow].Add(PageName + _pageHash);
             }
 
-            await _mainWebView.EnsureCoreWebView2Async();
-            _mainWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+            await WebView.EnsureCoreWebView2Async();
+            WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
 
-            _mainWebView.Source = new Uri(Constants.BaseUrl + PageName);
+            WebView.Source = new Uri(Constants.BaseUrl + PageName);
 
             if (PageName != "나무위키:대문" && App.GlobalPreferenceViewModel.UsePageHistory)
                 App.GlobalPreferenceViewModel.PageHistories.Add(new(PageName));
         }
 
-        _mainWebView.CoreWebView2.DOMContentLoaded += OnDOMContentLoaded;
-        _mainWebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
-        _mainWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-        _mainWebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
-        _mainWebView.CoreWebView2.ContextMenuRequested += OnContextMenuRequested;
+        WebView.CoreWebView2.DOMContentLoaded += OnDOMContentLoaded;
+        WebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
+        WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+        WebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
+        WebView.CoreWebView2.ContextMenuRequested += OnContextMenuRequested;
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
 
-        if (_mainWebView != null)
+        if (WebView != null)
         {
-            _mainWebView.CoreWebView2.DOMContentLoaded -= OnDOMContentLoaded;
-            _mainWebView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
-            _mainWebView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
-            _mainWebView.CoreWebView2.NavigationStarting -= OnNavigationStarting;
-            _mainWebView.CoreWebView2.ContextMenuRequested -= OnContextMenuRequested;
+            WebView.CoreWebView2.DOMContentLoaded -= OnDOMContentLoaded;
+            WebView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
+            WebView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
+            WebView.CoreWebView2.NavigationStarting -= OnNavigationStarting;
+            WebView.CoreWebView2.ContextMenuRequested -= OnContextMenuRequested;
             WebViewContainer.Content = null;
 
             if (App.GlobalPreferenceViewModel.Preference.DisableWebViewCache)
             {
-                _mainWebView.Close();
+                WebView.Close();
+                WebView = null;
             }
         }
 
-        if (e.NavigationMode == NavigationMode.Back) WebViewCache.Remove(PageName + _pageHash);
+        if (e.NavigationMode == NavigationMode.Back)
+        {
+            PageCache.Remove(PageName + _pageHash);
+            WebView?.Close();
+        }
     }
 
-    private async void OnContextMenuRequested(CoreWebView2 sender, CoreWebView2ContextMenuRequestedEventArgs args)
+    public async void OnContextMenuRequested(CoreWebView2 sender, CoreWebView2ContextMenuRequestedEventArgs args)
     {
         args.Handled = true;
 
@@ -448,7 +486,7 @@ public sealed partial class BrowserPage : Page
         }
     }
 
-    private async void OnDOMContentLoaded(CoreWebView2 sender, CoreWebView2DOMContentLoadedEventArgs args)
+    public async void OnDOMContentLoaded(CoreWebView2 sender, CoreWebView2DOMContentLoadedEventArgs args)
     {
         // Initial setup after DOM is loaded
         await HideHeaderAsync();
@@ -460,10 +498,10 @@ public sealed partial class BrowserPage : Page
         await UpdateAdsVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
         await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
 
-        _mainWebView.Visibility = Visibility.Visible;
+        WebView.Visibility = Visibility.Visible;
     }
 
-    private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    public async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
         var message = args.TryGetWebMessageAsString();
 
@@ -491,7 +529,7 @@ public sealed partial class BrowserPage : Page
                             }
                         }
 
-                        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage(newItems));
+                        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage(_parent.ParentWindow, newItems));
                     }
                 }
             }
@@ -502,7 +540,7 @@ public sealed partial class BrowserPage : Page
         await ProcessUrlAsync(message);
     }
 
-    private async void OnNavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    public async void OnNavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
         var url = args.Uri;
 
@@ -517,7 +555,7 @@ public sealed partial class BrowserPage : Page
         await ProcessUrlAsync(url);
     }
 
-    private void OnNewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args) => args.Handled = true;
+    public void OnNewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args) => args.Handled = true;
 
     private async void OnAddPendingPageButtonClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
@@ -553,6 +591,7 @@ public sealed partial class BrowserPage : Page
     private async void OnAutoSuggestBoxQuerySubmittedMessageReceived(object recipient, AutoSuggestBoxQuerySubmittedMessage message)
     {
         if (!IsActive) return;
+        if (message.MainWindow != _parent.ParentWindow) return;
 
         var pageName = message.Value;
         await ValidateAndNavigateAsync(pageName);
@@ -561,6 +600,7 @@ public sealed partial class BrowserPage : Page
     private async void OnAutoSuggestBoxTextChangedMessageReceived(object recipient, AutoSuggestBoxTextChangedMessage message)
     {
         if (!IsActive) return;
+        if (message.MainWindow != _parent.ParentWindow) return;
 
         var (text, reason) = message.Value;
         if (reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
@@ -583,7 +623,7 @@ public sealed partial class BrowserPage : Page
     {
         if (string.IsNullOrWhiteSpace(queryText))
         {
-            WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage([]));
+            WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage(_parent.ParentWindow, []));
             return;
         }
 
@@ -640,7 +680,7 @@ public sealed partial class BrowserPage : Page
                 })();
             """;
 
-            await _mainWebView.ExecuteScriptAsync(script);
+            await WebView.ExecuteScriptAsync(script);
         }
         catch { }
     }

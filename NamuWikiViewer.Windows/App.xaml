@@ -16,9 +16,11 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <Color x:Key="ThemeColor">#FFFFFF</Color>
+                    <Color x:Key="ReverseThemeColor">#000000</Color>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <Color x:Key="ThemeColor">#000000</Color>
+                    <Color x:Key="ReverseThemeColor">#FFFFFF</Color>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

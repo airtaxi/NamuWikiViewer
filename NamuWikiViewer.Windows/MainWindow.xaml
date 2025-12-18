@@ -32,20 +32,37 @@
             IsPaneToggleButtonVisible="True"
             PaneToggleRequested="OnAppTitleBarPaneToggleRequested">
             <!--  Force Large Size  -->
-            <TitleBar.Content>
-                <AutoSuggestBox
-                    x:Name="TitleBarAutoSuggestBox"
-                    Width="300"
-                    Height="32"
+            <TitleBar.LeftHeader>
+                <Button
+                    x:Name="HomeButton"
                     Margin="0,0,12,0"
-                    HorizontalAlignment="Right"
+                    Padding="14"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="OnAppTitleBarHomeClicked"
+                    Foreground="{StaticResource ReverseThemeColor}"
+                    Visibility="Collapsed">
+                    <FontIcon FontSize="14" Glyph="&#xE80F;" />
+                </Button>
+            </TitleBar.LeftHeader>
+            <TitleBar.Content>
+                <StackPanel
                     VerticalAlignment="Center"
-                    PlaceholderText="검색"
-                    QueryIcon="Find"
-                    Visibility="Collapsed"
-                    PreviewKeyDown="OnTitleBarAutoSuggestBoxPreviewKeyDown"
-                    QuerySubmitted="OnTitleBarAutoSuggestBoxQuerySubmitted"
-                    TextChanged="OnTitleBarAutoSuggestBoxTextChanged" />
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <AutoSuggestBox
+                        x:Name="TitleBarAutoSuggestBox"
+                        Width="300"
+                        Height="32"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        PlaceholderText="검색"
+                        PreviewKeyDown="OnTitleBarAutoSuggestBoxPreviewKeyDown"
+                        QueryIcon="Find"
+                        QuerySubmitted="OnTitleBarAutoSuggestBoxQuerySubmitted"
+                        TextChanged="OnTitleBarAutoSuggestBoxTextChanged"
+                        Visibility="Collapsed" />
+                </StackPanel>
             </TitleBar.Content>
 
             <TitleBar.IconSource>

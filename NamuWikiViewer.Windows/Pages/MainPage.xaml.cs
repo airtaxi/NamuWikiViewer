@@ -35,6 +35,7 @@ public sealed partial class MainPage : Page
         {
             ParentWindow.TitleBarBackRequested += OnParentTitleBarBackRequested;
             ParentWindow.TitleBarPaneToggleRequested += OnParentTitleBarPaneToggleRequested;
+            ParentWindow.TitleBarHomeRequested += OnParentTitleBarHomeRequested;
             MainFrame.Navigate(typeof(BrowserPage), this);
         }
     }
@@ -46,12 +47,14 @@ public sealed partial class MainPage : Page
         if (e.NavigationMode == NavigationMode.Back)
         {
             ParentWindow.TitleBarBackRequested -= OnParentTitleBarBackRequested;
+            ParentWindow.TitleBarPaneToggleRequested -= OnParentTitleBarPaneToggleRequested;
+            ParentWindow.TitleBarHomeRequested -= OnParentTitleBarHomeRequested;
         }
     }
 
     public void NavigateToPage(string pageName) => MainFrame.Navigate(typeof(BrowserPage), (pageName, Guid.NewGuid().ToString(), this));
 
-    private BrowserPage GetCurrentBrowserPage() => MainFrame.Content as BrowserPage;
+    public BrowserPage GetCurrentBrowserPage() => MainFrame.Content as BrowserPage;
 
     private async Task LaunchPathUriAsync(string path)
     {
@@ -65,15 +68,20 @@ public sealed partial class MainPage : Page
 
     private void OnParentTitleBarBackRequested(object sender, object e)
     {
-        if (MainFrame.CanGoBack)
-        {
-            MainFrame.GoBack();
-        }
-    }
+        if (!MainFrame.CanGoBack) return;
 
-    private void OnParentTitleBarPaneToggleRequested(object sender, object e)
+        MainFrame.GoBack();
+    }
+    private void OnParentTitleBarPaneToggleRequested(object sender, object e) => ToggleMenu();
+    private void OnParentTitleBarHomeRequested(object sender, object e)
     {
-        ToggleMenu();
+        NavigateToPage("나무위키:대문");
+        MainFrame.BackStack.Clear();
+
+        BrowserPage.DisposeAllWithoutCurrentPage(ParentWindow);
+
+        ParentWindow.ToggleBackButton(false);
+        ParentWindow.ToggleHomeButton(false);
     }
 
     private void ToggleMenu()
@@ -115,8 +123,9 @@ public sealed partial class MainPage : Page
     {
         var frame = sender as Frame;
 
-        if (frame.BackStackDepth > 0) ParentWindow.ToggleBackButton(true);
-        else ParentWindow.ToggleBackButton(false);
+        var hasBackstack = frame.BackStackDepth > 0;
+        ParentWindow.ToggleBackButton(hasBackstack);
+        ParentWindow.ToggleHomeButton(hasBackstack);
 
         if (frame.Content is BrowserPage)
         {

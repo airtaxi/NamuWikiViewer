@@ -13,6 +13,7 @@ public sealed partial class MainWindow : WindowEx
 {
     public event EventHandler<object> TitleBarBackRequested;
     public event EventHandler<object> TitleBarPaneToggleRequested;
+    public event EventHandler<object> TitleBarHomeRequested;
 
     private readonly ObservableCollection<string> _autoSuggestionItems = new();
 
@@ -33,12 +34,8 @@ public sealed partial class MainWindow : WindowEx
         MainFrame.Navigate(typeof(MainPage), this);
     }
 
+    public void ToggleHomeButton(bool show) => HomeButton.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
     public void ToggleBackButton(bool show) => AppTitleBar.IsBackButtonVisible = show;
-
-    private void OnAppTitleBarBackRequested(TitleBar sender, object args) => TitleBarBackRequested?.Invoke(this, args);
-    private void OnAppTitleBarPaneToggleRequested(TitleBar sender, object args) => TitleBarPaneToggleRequested?.Invoke(this, args);
-
-    private void OnWindowClosed(object sender, WindowEventArgs args) => BrowserPage.PurgeWebViewCacheForWindow(this);
 
     public void ShowLoading(string message = null)
     {
@@ -81,29 +78,34 @@ public sealed partial class MainWindow : WindowEx
         });
     }
 
-    private void OnTitleBarAutoSuggestBoxQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
-    {
-        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxQuerySubmittedMessage(args.QueryText));
-    }
+    private void OnAppTitleBarBackRequested(TitleBar sender, object args) => TitleBarBackRequested?.Invoke(this, args);
+    private void OnAppTitleBarPaneToggleRequested(TitleBar sender, object args) => TitleBarPaneToggleRequested?.Invoke(this, args);
+    private void OnAppTitleBarHomeClicked(object sender, RoutedEventArgs e) => TitleBarHomeRequested?.Invoke(this, e);
+
+    private void OnWindowClosed(object sender, WindowEventArgs args) => BrowserPage.PurgeWebViewCacheForWindow(this);
+
+    private void OnTitleBarAutoSuggestBoxQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) => WeakReferenceMessenger.Default.Send(new AutoSuggestBoxQuerySubmittedMessage(this, args.QueryText));
 
     private void OnTitleBarAutoSuggestBoxTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
 
-        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxTextChangedMessage(sender.Text, args.Reason));
+        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxTextChangedMessage(this, sender.Text, args.Reason));
     }
 
     private void OnTitleBarAutoSuggestBoxPreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
         if (e.Key == global::Windows.System.VirtualKey.Enter)
         {
-            WeakReferenceMessenger.Default.Send(new AutoSuggestBoxQuerySubmittedMessage(TitleBarAutoSuggestBox.Text));
+            WeakReferenceMessenger.Default.Send(new AutoSuggestBoxQuerySubmittedMessage(this, TitleBarAutoSuggestBox.Text));
             e.Handled = true;
         }
     }
 
     private void OnAutoSuggestBoxItemsSourceMessageReceived(object recipient, AutoSuggestBoxItemsSourceMessage message)
     {
+        if (message.MainWindow != this) return;
+
         DispatcherQueue.TryEnqueue(() =>
         {
             var newItems = message.Value.ToList();
@@ -130,6 +132,8 @@ public sealed partial class MainWindow : WindowEx
 
     private void OnSetAutoSuggestBoxTextMessageReceived(object recipient, SetAutoSuggestBoxTextMessage message)
     {
+        if (message.MainWindow != this) return;
+
         DispatcherQueue.TryEnqueue(() =>
         {
             TitleBarAutoSuggestBox.Text = message.Value;
