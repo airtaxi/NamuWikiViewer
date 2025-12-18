@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Web.WebView2.Core;
 using NamuWikiViewer.Commons.Models;
+using NamuWikiViewer.Windows.Extensions;
 using NamuWikiViewer.Windows.Messages;
 using RestSharp;
 using System.Collections.ObjectModel;
@@ -102,6 +103,20 @@ public sealed partial class BrowserPage : Page
         WeakReferenceMessenger.Default.Register<FontScaleChangedMessage>(this, OnFontScaleChangedMessageReceived);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxQuerySubmittedMessage>(this, OnAutoSuggestBoxQuerySubmittedMessageReceived);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxTextChangedMessage>(this, OnAutoSuggestBoxTextChangedMessageReceived);
+    }
+
+    public void ShowBrowserSearch()
+    {
+        if (WebView?.CoreWebView2 == null) return;
+
+        WebView.ShowFindDialog();
+    }
+
+    public void HideBrowserSearch()
+    {
+        if (WebView?.CoreWebView2 == null) return;
+
+        WebView.HideFindDialog();
     }
 
     private async Task InjectNavigationInterceptScriptAsync()

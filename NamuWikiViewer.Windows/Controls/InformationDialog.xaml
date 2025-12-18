@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentDialog
+    x:Class="NamuWikiViewer.Windows.Controls.InformationDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dev="using:DevWinUI"
+    xmlns:local="using:NamuWikiViewer.Windows.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:root="using:NamuWikiViewer.Windows"
+    xmlns:viewmodels="using:NamuWikiViewer.Windows.ViewModels"
+    Title="앱 정보"
+    MinWidth="600"
+    CloseButtonText="닫기"
+    Style="{ThemeResource DefaultContentDialogStyle}"
+    mc:Ignorable="d">
+    <ContentDialog.Resources>
+        <x:Double x:Key="ContentDialogMaxWidth">700</x:Double>
+    </ContentDialog.Resources>
+
+    <ScrollViewer MinWidth="600">
+        <StackPanel Spacing="8">
+            <StackPanel
+                Margin="0,0,0,24"
+                HorizontalAlignment="Center"
+                Spacing="4">
+                <Image
+                    Width="72"
+                    Height="72"
+                    Margin="0,0,0,12"
+                    Source="ms-appx:///Assets/logo.ico" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{ThemeResource TitleTextBlockStyle}"
+                    Text="NamuWikiViewer" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Opacity="0.8"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Text="나무위키 뷰어" />
+                <TextBlock
+                    x:Name="VersionTextBlock"
+                    HorizontalAlignment="Center"
+                    Opacity="0.6"
+                    Style="{ThemeResource CaptionTextBlockStyle}" />
+                <StackPanel
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="4">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="개발자:" />
+                    <TextBlock Style="{ThemeResource BodyTextBlockStyle}" Text="airtaxi (Howon Lee)" />
+                </StackPanel>
+                <HyperlinkButton
+                    HorizontalAlignment="Center"
+                    Content="GitHub 저장소 방문"
+                    NavigateUri="https://github.com/airtaxi/NamuWikiViewer" />
+            </StackPanel>
+
+            <TextBlock
+                Margin="4,0,0,4"
+                Style="{ThemeResource SubtitleTextBlockStyle}"
+                Text="사용된 오픈소스 라이브러리" />
+
+            <dev:SettingsCard Description="Windows App SDK" Header="Microsoft.WindowsAppSDK">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Opacity="0.6"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
+                        Text="MIT License" />
+                    <HyperlinkButton Content="Repository" NavigateUri="https://github.com/microsoft/WindowsAppSDK" />
+                </StackPanel>
+            </dev:SettingsCard>
+            <dev:SettingsCard Description="WinUI 확장 라이브러리" Header="WinUIEx">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Opacity="0.6"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
+                        Text="MIT License" />
+                    <HyperlinkButton Content="Repository" NavigateUri="https://github.com/dotMorten/WinUIEx" />
+                </StackPanel>
+            </dev:SettingsCard>
+            <dev:SettingsCard Description=".NET Community Toolkit MVVM 라이브러리" Header="CommunityToolkit.Mvvm">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Opacity="0.6"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
+                        Text="MIT License" />
+                    <HyperlinkButton Content="Repository" NavigateUri="https://github.com/CommunityToolkit/dotnet" />
+                </StackPanel>
+            </dev:SettingsCard>
+            <dev:SettingsCard Description="WinUI 컨트롤 및 도구 모음" Header="DevWinUI">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Opacity="0.6"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
+                        Text="MIT License" />
+                    <HyperlinkButton Content="Repository" NavigateUri="https://github.com/ghost1372/DevWinUI" />
+                </StackPanel>
+            </dev:SettingsCard>
+            <dev:SettingsCard Description="REST 및 HTTP API 클라이언트" Header="RestSharp">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Opacity="0.6"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
+                        Text="Apache-2.0 License" />
+                    <HyperlinkButton Content="Repository" NavigateUri="https://github.com/restsharp/RestSharp" />
+                </StackPanel>
+            </dev:SettingsCard>
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>

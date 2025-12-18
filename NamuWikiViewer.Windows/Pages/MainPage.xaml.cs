@@ -6,7 +6,9 @@ using Microsoft.UI.Xaml.Navigation;
 using NamuWikiViewer.Windows.Controls;
 using NamuWikiViewer.Windows.Messages;
 using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
+using WinUIEx;
 
 namespace NamuWikiViewer.Windows.Pages;
 
@@ -26,7 +28,7 @@ public sealed partial class MainPage : Page
         WeakReferenceMessenger.Default.Register<PendingPageAddedMessage>(this, OnPendingPageAddedMessageReceived);
     }
 
-    protected override void OnNavigatedTo(NavigationEventArgs e)
+    protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
 
@@ -44,6 +46,9 @@ public sealed partial class MainPage : Page
 
             if (pageName != "나무위키:대문") ParentWindow.ToggleHomeButton(true);
         }
+
+        DataTransferManager dataTransferManager = DataTransferManagerInterop.GetForWindow(ParentWindow.GetWindowHandle());
+        dataTransferManager.DataRequested += OnDataTransferManagerDataRequested;
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -56,6 +61,9 @@ public sealed partial class MainPage : Page
             ParentWindow.TitleBarPaneToggleRequested -= OnParentTitleBarPaneToggleRequested;
             ParentWindow.TitleBarHomeRequested -= OnParentTitleBarHomeRequested;
         }
+
+        DataTransferManager dataTransferManager = DataTransferManagerInterop.GetForWindow(ParentWindow.GetWindowHandle());
+        dataTransferManager.DataRequested -= OnDataTransferManagerDataRequested;
     }
 
     public void NavigateToPage(string pageName) => MainFrame.Navigate(typeof(BrowserPage), (pageName, Guid.NewGuid().ToString(), this));
@@ -72,13 +80,34 @@ public sealed partial class MainPage : Page
         await Launcher.LaunchUriAsync(new Uri($"https://namu.wiki/{path}/{pageName}"));
     }
 
+    private void OnDataTransferManagerDataRequested(DataTransferManager sender, DataRequestedEventArgs args)
+    {
+        var browserPage = GetCurrentBrowserPage();
+        if (browserPage is null) return;
+
+        var pageName = browserPage.PageName;
+        var request = args.Request;
+
+        request.Data.Properties.Title = pageName;
+        request.Data.SetWebLink(new Uri($"https://namu.wiki/w/{pageName}"));
+    }
+
     private void OnParentTitleBarBackRequested(object sender, object e)
     {
         if (!MainFrame.CanGoBack) return;
 
         MainFrame.GoBack();
     }
-    private void OnParentTitleBarPaneToggleRequested(object sender, object e) => ToggleMenu();
+    private void OnParentTitleBarPaneToggleRequested(object sender, object e)
+    {
+        ToggleMenu();
+
+        var browserPage = GetCurrentBrowserPage();
+        if (browserPage is null) return;
+
+        browserPage.HideBrowserSearch();
+    }
+
     private void OnParentTitleBarHomeRequested(object sender, object e)
     {
         NavigateToPage("나무위키:대문");
@@ -287,5 +316,29 @@ public sealed partial class MainPage : Page
         if (previousFontScale == App.GlobalPreferenceViewModel.FontScale) return;
 
         WeakReferenceMessenger.Default.Send(new FontScaleChangedMessage(App.GlobalPreferenceViewModel.FontScale));
+    }
+
+    private void OnShareButtonClicked(object sender, RoutedEventArgs e)
+    {
+        var browserPage = GetCurrentBrowserPage();
+        if (browserPage is null) return;
+
+        DataTransferManagerInterop.ShowShareUIForWindow(ParentWindow.GetWindowHandle());
+    }
+
+    private void OnOpenSearchButtonClicked(object sender, RoutedEventArgs e)
+    {
+        ToggleMenu();
+
+        var browserPage = GetCurrentBrowserPage();
+        if (browserPage is null) return;
+
+        browserPage.ShowBrowserSearch();
+    }
+
+    private async void OnInformationButtonClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new InformationDialog { XamlRoot = XamlRoot };
+        await dialog.ShowAsync();
     }
 }

@@ -9,6 +9,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:root="using:NamuWikiViewer.Windows"
     xmlns:viewmodels="using:NamuWikiViewer.Windows.ViewModels"
+    Title="설정"
     MinWidth="600"
     d:DataContext="{d:DesignInstance Type=viewmodels:PreferenceViewModel}"
     CloseButtonText="닫기"

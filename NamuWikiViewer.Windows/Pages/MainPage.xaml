@@ -127,6 +127,7 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" HorizontalAlignment="Stretch">
@@ -282,7 +283,7 @@
                     </Button>
                 </Grid>
 
-                <Grid Grid.Row="3">
+                <Grid Grid.Row="3" Margin="0,-4,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
@@ -328,6 +329,57 @@
                                 FontSize="14"
                                 Glyph="&#xE8E7;" />
                             <TextBlock VerticalAlignment="Center" Text="글꼴 축소" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="4" Margin="0,-4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button
+                        Grid.Column="0"
+                        Height="40"
+                        HorizontalAlignment="Stretch"
+                        Click="OnShareButtonClicked"
+                        CornerRadius="4,0,0,4">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="14"
+                                Glyph="&#xE72D;" />
+                            <TextBlock VerticalAlignment="Center" Text="공유" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        Grid.Column="1"
+                        Height="40"
+                        HorizontalAlignment="Stretch"
+                        Click="OnOpenSearchButtonClicked"
+                        CornerRadius="0,0,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="14"
+                                Glyph="&#xE773;" />
+                            <TextBlock VerticalAlignment="Center" Text="검색 열기" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        Grid.Column="2"
+                        Height="40"
+                        HorizontalAlignment="Stretch"
+                        Click="OnInformationButtonClicked"
+                        CornerRadius="0,4,4,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="14"
+                                Glyph="&#xE946;" />
+                            <TextBlock VerticalAlignment="Center" Text="앱 정보" />
                         </StackPanel>
                     </Button>
                 </Grid>

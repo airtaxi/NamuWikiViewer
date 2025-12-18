@@ -11,6 +11,8 @@ namespace NamuWikiViewer.Windows;
 
 public sealed partial class MainWindow : WindowEx
 {
+    public bool IsFocused { get; private set; }
+
     public event EventHandler<object> TitleBarBackRequested;
     public event EventHandler<object> TitleBarPaneToggleRequested;
     public event EventHandler<object> TitleBarHomeRequested;
