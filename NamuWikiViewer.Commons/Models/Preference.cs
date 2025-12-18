@@ -8,6 +8,8 @@ public class Preference
 
     public bool BlockAds { get; set; } = false;
 
+    public bool DisableWebViewCache { get; set; } = false;
+
     public List<PendingPage> PendingPages { get; set; } = [];
 
     public List<PageHistory> PageHistories { get; set; } = [];

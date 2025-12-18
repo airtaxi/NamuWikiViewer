@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dev="using:DevWinUI"
     xmlns:local="using:NamuWikiViewer.Windows"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:winuiex="using:WinUIEx"
@@ -32,7 +33,19 @@
             PaneToggleRequested="OnAppTitleBarPaneToggleRequested">
             <!--  Force Large Size  -->
             <TitleBar.Content>
-                <ContentControl />
+                <AutoSuggestBox
+                    x:Name="TitleBarAutoSuggestBox"
+                    Width="300"
+                    Height="32"
+                    Margin="0,0,12,0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    PlaceholderText="검색"
+                    QueryIcon="Find"
+                    Visibility="Collapsed"
+                    PreviewKeyDown="OnTitleBarAutoSuggestBoxPreviewKeyDown"
+                    QuerySubmitted="OnTitleBarAutoSuggestBoxQuerySubmitted"
+                    TextChanged="OnTitleBarAutoSuggestBoxTextChanged" />
             </TitleBar.Content>
 
             <TitleBar.IconSource>
@@ -41,5 +54,30 @@
         </TitleBar>
 
         <Frame x:Name="MainFrame" Grid.Row="1" />
+
+        <Grid
+            x:Name="LoadingGrid"
+            Grid.RowSpan="2"
+            Visibility="Collapsed">
+            <Rectangle Fill="{ThemeResource ThemeColor}" Opacity="0.3" />
+
+            <dev:BlurEffectControl
+                BlurAmount="10"
+                IsBlurEnabled="True"
+                IsTintEnabled="False" />
+
+            <StackPanel Spacing="8">
+                <ProgressRing
+                    Width="100"
+                    Height="100"
+                    Foreground="{ThemeResource SystemAccentColor}"
+                    IsIndeterminate="True" />
+                <TextBlock
+                    x:Name="LoadingTextBlock"
+                    HorizontalAlignment="Center"
+                    FontSize="16"
+                    FontWeight="Bold" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </winuiex:WindowEx>

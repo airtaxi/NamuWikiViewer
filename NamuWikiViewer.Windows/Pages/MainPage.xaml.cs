@@ -12,6 +12,7 @@ namespace NamuWikiViewer.Windows.Pages;
 public sealed partial class MainPage : Page
 {
     public MainWindow ParentWindow { get; private set; }
+    public Frame AppFrame => MainFrame;
 
     private bool _isMenuOpen = false;
     private bool _isAnimating = false;
@@ -103,6 +104,15 @@ public sealed partial class MainPage : Page
 
         if (frame.BackStackDepth > 0) ParentWindow.ToggleBackButton(true);
         else ParentWindow.ToggleBackButton(false);
+
+        if (frame.Content is BrowserPage)
+        {
+            ParentWindow.ShowSearchBar();
+        }
+        else
+        {
+            ParentWindow.HideSearchBar();
+        }
     }
 
     private async void OnDeletePendingPageButtonClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)

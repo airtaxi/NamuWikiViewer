@@ -22,6 +22,9 @@ public partial class PreferenceViewModel : ObservableObject
     [ObservableProperty]
     public partial bool BlockAds { get; set; }
 
+    [ObservableProperty]
+    public partial bool DisableWebViewCache { get; set; }
+
     public ObservableCollection<PendingPage> PendingPages { get; }
 
     public ObservableCollection<PageHistory> PageHistories { get; }
@@ -36,6 +39,7 @@ public partial class PreferenceViewModel : ObservableObject
         UsePageHistory = preference.UsePageHistory;
         HideWebViewScrollBar = preference.HideWebViewScrollBar;
         BlockAds = preference.BlockAds;
+        DisableWebViewCache = preference.DisableWebViewCache;
 
         PendingPages = new(preference.PendingPages ?? []);
         PendingPages.CollectionChanged += OnPendingPagesCollectionChanged;
@@ -122,6 +126,7 @@ public partial class PreferenceViewModel : ObservableObject
         Preference.UsePageHistory = UsePageHistory;
         Preference.HideWebViewScrollBar = HideWebViewScrollBar;
         Preference.BlockAds = BlockAds;
+        Preference.DisableWebViewCache = DisableWebViewCache;
 
         Configuration.SetValue("Preference", Preference);
 
