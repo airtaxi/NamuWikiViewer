@@ -10,19 +10,12 @@
     mc:Ignorable="d">
 
     <Grid>
+        <Rectangle Fill="{ThemeResource ThemeColor}" />
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <Rectangle Grid.RowSpan="2" Fill="{ThemeResource ThemeColor}" />
-
-        <Frame x:Name="WebViewContainer" Grid.Row="1" />
+        <Frame x:Name="WebViewContainer" />
 
         <Grid
             x:Name="PendingPageNameGrid"
-            Grid.Row="1"
             Padding="16"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"

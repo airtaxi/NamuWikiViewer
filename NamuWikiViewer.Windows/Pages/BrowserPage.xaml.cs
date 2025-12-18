@@ -280,8 +280,55 @@ public sealed partial class BrowserPage : Page
         await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
         await UpdateAdsVisibility(App.GlobalPreferenceViewModel.Preference);
         await InjectNavigationInterceptScriptAsync();
+        await UpdateTimestampAsync();
 
         _mainWebView.Visibility = Visibility.Visible;
+    }
+
+    private async Task UpdateTimestampAsync()
+    {
+        var script = @"
+            (function() {
+                var timeElement = document.querySelector('time');
+                if (!timeElement) return;
+                
+                var datetime = timeElement.getAttribute('datetime');
+                if (!datetime) return;
+                
+                var date = new Date(datetime);
+                var year = date.getFullYear();
+                var month = String(date.getMonth() + 1).padStart(2, '0');
+                var day = String(date.getDate()).padStart(2, '0');
+                var hours = String(date.getHours()).padStart(2, '0');
+                var minutes = String(date.getMinutes()).padStart(2, '0');
+                var seconds = String(date.getSeconds()).padStart(2, '0');
+                
+                var formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                var text = '최근 수정 시각: ' + formattedDate;
+                
+                var existingDiv = document.getElementById('customTimestampDiv');
+                if (existingDiv) {
+                    existingDiv.innerText = text;
+                    return;
+                }
+                
+                var div = document.createElement('div');
+                div.id = 'customTimestampDiv';
+                div.innerText = text;
+                div.style.margin = '4px';
+                div.style.fontSize = '12px';
+                div.style.color = '#808080';
+                
+                var app = document.getElementById('app');
+                if (app) {
+                    app.insertBefore(div, app.firstChild);
+                } else {
+                    document.body.insertBefore(div, document.body.firstChild);
+                }
+            })();
+        ";
+
+        await _mainWebView.ExecuteScriptAsync(script);
     }
 
     private async Task HideHeaderAsync()
