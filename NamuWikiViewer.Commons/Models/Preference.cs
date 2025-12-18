@@ -13,4 +13,6 @@ public class Preference
     public List<PendingPage> PendingPages { get; set; } = [];
 
     public List<PageHistory> PageHistories { get; set; } = [];
+
+    public double FontScale { get; set; } = 1.0;
 }

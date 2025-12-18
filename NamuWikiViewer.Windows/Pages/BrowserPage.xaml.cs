@@ -22,8 +22,6 @@ namespace NamuWikiViewer.Windows.Pages;
 
 public sealed partial class BrowserPage : Page
 {
-    private const string BaseUrl = "https://namu.wiki/w/";
-
     // For caching WebView2 instances (to preserve state)
     private static readonly Dictionary<string, WebView2> WebViewCache = [];
 
@@ -48,8 +46,11 @@ public sealed partial class BrowserPage : Page
         }
     }
 
+    public string PageName { get; private set; }
+
+    private bool IsActive => (Page)_parent.AppFrame.Content == this;
+
     private bool _isFirstNavigation;
-    private string _pageName;
     private string _pageHash;
     private MainPage _parent;
     private WebView2 _mainWebView;
@@ -62,11 +63,12 @@ public sealed partial class BrowserPage : Page
     public BrowserPage()
     {
         InitializeComponent();
-        _pageName = "나무위키:대문";
+        PageName = "나무위키:대문";
 
         WeakReferenceMessenger.Default.Register<ValueChangedMessage<Preference>>(this, OnPreferenceChanged);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxQuerySubmittedMessage>(this, OnAutoSuggestBoxQuerySubmittedMessageReceived);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxTextChangedMessage>(this, OnAutoSuggestBoxTextChangedMessageReceived);
+        WeakReferenceMessenger.Default.Register<FontScaleChangedMessage>(this, OnFontScaleChangedMessageReceived);
     }
 
     private async Task InjectNavigationInterceptScriptAsync()
@@ -114,7 +116,7 @@ public sealed partial class BrowserPage : Page
                 Object.defineProperty(window, 'location', {
                     get: function() { return originalLocation; },
                     set: function(url) {
-                        if (url.startsWith('" + BaseUrl + @"')) {
+                        if (url.startsWith('" + Constants.BaseUrl + @"')) {
                             window.chrome.webview.postMessage(url);
                         }
                     }
@@ -137,13 +139,26 @@ public sealed partial class BrowserPage : Page
         catch (ObjectDisposedException) { } // WebView might be disposed
     }
 
+    private async Task UpdateFontScaleAsync(Preference preference)
+    {
+        if (_mainWebView?.CoreWebView2 == null) return;
+
+        var script = $$"""
+            (function() {
+                document.body.style.zoom = '{{preference.FontScale}}';
+            })();
+        """;
+        try { await _mainWebView.ExecuteScriptAsync(script); }
+        catch (ObjectDisposedException) { } // WebView might be disposed
+    }
+
     private async Task ProcessUrlAsync(string url)
     {
-        if (url.StartsWith(BaseUrl))
+        if (url.StartsWith(Constants.BaseUrl))
         {
-            var pageName = HttpUtility.UrlDecode(url[BaseUrl.Length..]);
+            var pageName = HttpUtility.UrlDecode(url[Constants.BaseUrl.Length..]);
             
-            var currentBasePage = _pageName?.Split('#')[0];
+            var currentBasePage = PageName?.Split('#')[0];
             var targetBasePage = pageName.Split('#')[0];
 
             if (currentBasePage == targetBasePage && pageName.Contains('#')) return;
@@ -163,126 +178,23 @@ public sealed partial class BrowserPage : Page
         else await Launcher.LaunchUriAsync(new Uri(url));
     }
 
-    private async void OnPreferenceChanged(object recipient, ValueChangedMessage<Preference> message)
+    private async Task ValidateAndNavigateAsync(string pageName)
     {
-        var newPreference = message.Value;
-        await UpdateScrollBarVisibilityAsync(newPreference);
-        await UpdateAdsVisibility(newPreference);
-    }
+        _lastQueryText = null;
+        _autoSuggestCts?.Cancel();
+        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage([]));
 
-    protected override async void OnNavigatedTo(NavigationEventArgs e)
-    {
-        base.OnNavigatedTo(e);
-
-        if (e.Parameter is MainPage mainPage) _parent = mainPage;
-        else if (e.Parameter is (string pageName, string pageHash, MainPage mainPage2))
+        _parent.ParentWindow.ShowLoading();
+        try
         {
-            _pageName = pageName;
-            _pageHash = pageHash;
-            _parent = mainPage2;
+            var request = new RestRequest($"/w/{pageName}", Method.Get);
+
+            var response = await s_client.ExecuteAsync(request);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.OK) _parent.NavigateToPage(pageName);
+            else await MessageBox.ShowErrorAsync(true, _parent.ParentWindow, "해당 페이지를 찾을 수 없습니다.", "오류");
         }
-
-        WeakReferenceMessenger.Default.Send(new SetAutoSuggestBoxTextMessage(_pageName));
-
-        var disableCache = App.GlobalPreferenceViewModel.Preference.DisableWebViewCache;
-
-        if (!disableCache && WebViewCache.TryGetValue(_pageName + _pageHash, out var cachedWebView))
-        {
-            _mainWebView = cachedWebView;
-
-            if (_mainWebView.Parent is Grid parentGrid)
-            {
-                parentGrid.Children.Remove(_mainWebView);
-            }
-
-            WebViewContainer.Content = _mainWebView;
-        }
-        else
-        {
-            _isFirstNavigation = true;
-
-            _mainWebView = new WebView2 { Visibility = Visibility.Collapsed };
-            WebViewContainer.Content = _mainWebView;
-
-            if (!disableCache)
-            {
-                WebViewCache[_pageName + _pageHash] = _mainWebView;
-
-                // Track WebView keys for the parent MainWindow (to prevent memory leaks)
-                if (!MainWindowWebViewKeys.ContainsKey(_parent.ParentWindow)) MainWindowWebViewKeys[_parent.ParentWindow] = [];
-                MainWindowWebViewKeys[_parent.ParentWindow].Add(_pageName + _pageHash);
-            }
-
-            await _mainWebView.EnsureCoreWebView2Async();
-            _mainWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-
-            _mainWebView.Source = new Uri(BaseUrl + _pageName);
-            await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
-
-            if (_pageName != "나무위키:대문" && App.GlobalPreferenceViewModel.UsePageHistory)
-                App.GlobalPreferenceViewModel.PageHistories.Add(new(_pageName));
-        }
-
-        _mainWebView.CoreWebView2.DOMContentLoaded += OnDOMContentLoaded;
-        _mainWebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
-        _mainWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-        _mainWebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
-        _mainWebView.CoreWebView2.ContextMenuRequested += OnContextMenuRequested;
-    }
-
-    protected override void OnNavigatedFrom(NavigationEventArgs e)
-    {
-        base.OnNavigatedFrom(e);
-
-        if (_mainWebView != null)
-        {
-            _mainWebView.CoreWebView2.DOMContentLoaded -= OnDOMContentLoaded;
-            _mainWebView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
-            _mainWebView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
-            _mainWebView.CoreWebView2.NavigationStarting -= OnNavigationStarting;
-            _mainWebView.CoreWebView2.ContextMenuRequested -= OnContextMenuRequested;
-            WebViewContainer.Content = null;
-
-            if (App.GlobalPreferenceViewModel.Preference.DisableWebViewCache)
-            {
-                _mainWebView.Close();
-            }
-        }
-
-        if (e.NavigationMode == NavigationMode.Back) WebViewCache.Remove(_pageName + _pageHash);
-    }
-
-    private async void OnContextMenuRequested(CoreWebView2 sender, CoreWebView2ContextMenuRequestedEventArgs args)
-    {
-        args.Handled = true;
-
-        if (args.ContextMenuTarget.LinkUri?.StartsWith(BaseUrl) == true)
-        {
-            var pageName = HttpUtility.UrlDecode(args.ContextMenuTarget.LinkUri[BaseUrl.Length..]);
-
-            _pendingPageName = pageName;
-
-            PendingPageNameTextBlock.Text = pageName;
-            PendingPageNameGrid.Visibility = Visibility.Visible;
-
-            _pendingPageNameCts?.Cancel();
-            _pendingPageNameCts = new CancellationTokenSource();
-            try { await Task.Delay(3000, _pendingPageNameCts.Token); }
-            catch (TaskCanceledException) { return; }
-
-            PendingPageNameGrid.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    private async void OnDOMContentLoaded(CoreWebView2 sender, CoreWebView2DOMContentLoadedEventArgs args)
-    {
-        await HideHeaderAsync();
-        await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
-        await UpdateAdsVisibility(App.GlobalPreferenceViewModel.Preference);
-        await InjectNavigationInterceptScriptAsync();
-        await UpdateTimestampAsync();
-
-        _mainWebView.Visibility = Visibility.Visible;
+        finally { _parent.ParentWindow.HideLoading(); }
     }
 
     private async Task UpdateTimestampAsync()
@@ -377,7 +289,7 @@ public sealed partial class BrowserPage : Page
         await _mainWebView.ExecuteScriptAsync(script);
     }
 
-    private async Task UpdateAdsVisibility(Preference preference)
+    private async Task UpdateAdsVisibilityAsync(Preference preference)
     {
         try
         {
@@ -427,6 +339,128 @@ public sealed partial class BrowserPage : Page
             }
         }
         catch (ObjectDisposedException) { } // WebView might be disposed
+    }
+
+    protected override async void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+
+        if (e.Parameter is MainPage mainPage) _parent = mainPage;
+        else if (e.Parameter is (string pageName, string pageHash, MainPage mainPage2))
+        {
+            PageName = pageName;
+            _pageHash = pageHash;
+            _parent = mainPage2;
+        }
+
+        WeakReferenceMessenger.Default.Send(new SetAutoSuggestBoxTextMessage(PageName));
+
+        var disableCache = App.GlobalPreferenceViewModel.Preference.DisableWebViewCache;
+
+        if (!disableCache && WebViewCache.TryGetValue(PageName + _pageHash, out var cachedWebView))
+        {
+            _mainWebView = cachedWebView;
+
+            if (_mainWebView.Parent is Grid parentGrid)
+            {
+                parentGrid.Children.Remove(_mainWebView);
+            }
+
+            await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
+            await UpdateAdsVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
+            await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
+
+            WebViewContainer.Content = _mainWebView;
+        }
+        else
+        {
+            _isFirstNavigation = true;
+
+            _mainWebView = new WebView2 { Visibility = Visibility.Collapsed };
+            WebViewContainer.Content = _mainWebView;
+
+            if (!disableCache)
+            {
+                WebViewCache[PageName + _pageHash] = _mainWebView;
+
+                // Track WebView keys for the parent MainWindow (to prevent memory leaks)
+                if (!MainWindowWebViewKeys.ContainsKey(_parent.ParentWindow)) MainWindowWebViewKeys[_parent.ParentWindow] = [];
+                MainWindowWebViewKeys[_parent.ParentWindow].Add(PageName + _pageHash);
+            }
+
+            await _mainWebView.EnsureCoreWebView2Async();
+            _mainWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+
+            _mainWebView.Source = new Uri(Constants.BaseUrl + PageName);
+
+            if (PageName != "나무위키:대문" && App.GlobalPreferenceViewModel.UsePageHistory)
+                App.GlobalPreferenceViewModel.PageHistories.Add(new(PageName));
+        }
+
+        _mainWebView.CoreWebView2.DOMContentLoaded += OnDOMContentLoaded;
+        _mainWebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
+        _mainWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+        _mainWebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
+        _mainWebView.CoreWebView2.ContextMenuRequested += OnContextMenuRequested;
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+
+        if (_mainWebView != null)
+        {
+            _mainWebView.CoreWebView2.DOMContentLoaded -= OnDOMContentLoaded;
+            _mainWebView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
+            _mainWebView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
+            _mainWebView.CoreWebView2.NavigationStarting -= OnNavigationStarting;
+            _mainWebView.CoreWebView2.ContextMenuRequested -= OnContextMenuRequested;
+            WebViewContainer.Content = null;
+
+            if (App.GlobalPreferenceViewModel.Preference.DisableWebViewCache)
+            {
+                _mainWebView.Close();
+            }
+        }
+
+        if (e.NavigationMode == NavigationMode.Back) WebViewCache.Remove(PageName + _pageHash);
+    }
+
+    private async void OnContextMenuRequested(CoreWebView2 sender, CoreWebView2ContextMenuRequestedEventArgs args)
+    {
+        args.Handled = true;
+
+        if (args.ContextMenuTarget.LinkUri?.StartsWith(Constants.BaseUrl) == true)
+        {
+            var pageName = HttpUtility.UrlDecode(args.ContextMenuTarget.LinkUri[Constants.BaseUrl.Length..]);
+
+            _pendingPageName = pageName;
+
+            PendingPageNameTextBlock.Text = pageName;
+            PendingPageNameGrid.Visibility = Visibility.Visible;
+
+            _pendingPageNameCts?.Cancel();
+            _pendingPageNameCts = new CancellationTokenSource();
+            try { await Task.Delay(3000, _pendingPageNameCts.Token); }
+            catch (TaskCanceledException) { return; }
+
+            PendingPageNameGrid.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private async void OnDOMContentLoaded(CoreWebView2 sender, CoreWebView2DOMContentLoadedEventArgs args)
+    {
+        // Initial setup after DOM is loaded
+        await HideHeaderAsync();
+        await InjectNavigationInterceptScriptAsync();
+        await UpdateTimestampAsync();
+
+        // Update DOM based on preferences
+        await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
+        await UpdateAdsVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
+        await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
+
+        _mainWebView.Visibility = Visibility.Visible;
     }
 
     private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -509,7 +543,12 @@ public sealed partial class BrowserPage : Page
         WeakReferenceMessenger.Default.Send(new PendingPageAddedMessage(pendingPage));
     }
 
-    private bool IsActive => (Page)_parent.AppFrame.Content == this;
+    private async void OnPreferenceChanged(object recipient, ValueChangedMessage<Preference> message)
+    {
+        var newPreference = message.Value;
+        await UpdateScrollBarVisibilityAsync(newPreference);
+        await UpdateAdsVisibilityAsync(newPreference);
+    }
 
     private async void OnAutoSuggestBoxQuerySubmittedMessageReceived(object recipient, AutoSuggestBoxQuerySubmittedMessage message)
     {
@@ -517,25 +556,6 @@ public sealed partial class BrowserPage : Page
 
         var pageName = message.Value;
         await ValidateAndNavigateAsync(pageName);
-    }
-
-    private async Task ValidateAndNavigateAsync(string pageName)
-    {
-        _lastQueryText = null;
-        _autoSuggestCts?.Cancel();
-        WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage([]));
-
-        _parent.ParentWindow.ShowLoading();
-        try
-        {
-            var request = new RestRequest($"/w/{pageName}", Method.Get);
-
-            var response = await s_client.ExecuteAsync(request);
-
-            if (response.StatusCode == System.Net.HttpStatusCode.OK) _parent.NavigateToPage(pageName);
-            else await MessageBox.ShowErrorAsync(true, _parent.ParentWindow, "해당 페이지를 찾을 수 없습니다.", "오류");
-        }
-        finally { _parent.ParentWindow.HideLoading(); }
     }
 
     private async void OnAutoSuggestBoxTextChangedMessageReceived(object recipient, AutoSuggestBoxTextChangedMessage message)
@@ -556,6 +576,8 @@ public sealed partial class BrowserPage : Page
         }
         catch (TaskCanceledException) { }
     }
+
+    private async void OnFontScaleChangedMessageReceived(object recipient, FontScaleChangedMessage message) => await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
 
     private async Task QueryAutoSuggestionAsync(string queryText)
     {

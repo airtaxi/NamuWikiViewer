@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Navigation;
 using NamuWikiViewer.Windows.Controls;
 using NamuWikiViewer.Windows.Messages;
 using System.Threading.Tasks;
+using Windows.System;
 
 namespace NamuWikiViewer.Windows.Pages;
 
@@ -49,6 +50,18 @@ public sealed partial class MainPage : Page
     }
 
     public void NavigateToPage(string pageName) => MainFrame.Navigate(typeof(BrowserPage), (pageName, Guid.NewGuid().ToString(), this));
+
+    private BrowserPage GetCurrentBrowserPage() => MainFrame.Content as BrowserPage;
+
+    private async Task LaunchPathUriAsync(string path)
+    {
+        var browserPage = GetCurrentBrowserPage();
+        if (browserPage is null) return;
+
+
+        var pageName = browserPage.PageName;
+        await Launcher.LaunchUriAsync(new Uri($"https://namu.wiki/{path}/{pageName}"));
+    }
 
     private void OnParentTitleBarBackRequested(object sender, object e)
     {
@@ -206,5 +219,40 @@ public sealed partial class MainPage : Page
         }
 
         App.GlobalPreferenceViewModel.PageHistories.Remove(pageHistory);
+    }
+
+    private async void OnEditPageButtonClicked(object sender, RoutedEventArgs e) => await LaunchPathUriAsync("edit");
+    private async void OnDiscussPageButtonClicked(object sender, RoutedEventArgs e) => await LaunchPathUriAsync("discuss");
+    private async void OnHistoryPageButtonClicked(object sender, RoutedEventArgs e) => await LaunchPathUriAsync("history");
+    private async void OnBacklinkPageButtonClicked(object sender, RoutedEventArgs e) => await LaunchPathUriAsync("backlink");
+
+    private void OnIncreaseFontSizePageButtonClicked(object sender, RoutedEventArgs e)
+    {
+        var previousFontScale = App.GlobalPreferenceViewModel.FontScale;
+
+        App.GlobalPreferenceViewModel.FontScale = Math.Clamp(App.GlobalPreferenceViewModel.FontScale + 0.1, Constants.MinFontScale, Constants.MaxFontScale);
+        if (previousFontScale == App.GlobalPreferenceViewModel.FontScale) return;
+
+        WeakReferenceMessenger.Default.Send(new FontScaleChangedMessage(App.GlobalPreferenceViewModel.FontScale));
+    }
+
+    private void OnDecreaseFontSizePageButtonClicked(object sender, RoutedEventArgs e)
+    {
+        var previousFontScale = App.GlobalPreferenceViewModel.FontScale;
+
+        App.GlobalPreferenceViewModel.FontScale = Math.Clamp(App.GlobalPreferenceViewModel.FontScale - 0.1, Constants.MinFontScale, Constants.MaxFontScale);
+        if (previousFontScale == App.GlobalPreferenceViewModel.FontScale) return;
+
+        WeakReferenceMessenger.Default.Send(new FontScaleChangedMessage(App.GlobalPreferenceViewModel.FontScale));
+    }
+
+    private void OnResetFontSizePageButtonClicked(object sender, RoutedEventArgs e)
+    {
+        var previousFontScale = App.GlobalPreferenceViewModel.FontScale;
+
+        App.GlobalPreferenceViewModel.FontScale = 1.0;
+        if (previousFontScale == App.GlobalPreferenceViewModel.FontScale) return;
+
+        WeakReferenceMessenger.Default.Send(new FontScaleChangedMessage(App.GlobalPreferenceViewModel.FontScale));
     }
 }
