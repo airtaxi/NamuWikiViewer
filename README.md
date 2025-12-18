@@ -4,6 +4,12 @@
 
 > **면책 조항 (Disclaimer)**: 본 애플리케이션은 나무위키(namu.wiki)의 비공식 뷰어이며, 나무위키 및 그 운영진과는 어떠한 제휴나 관련이 없습니다.
 
+## 스크린샷
+<img width="2196" height="1380" alt="Screenshot" src="https://github.com/user-attachments/assets/1b3ac363-af7b-48f8-8a5d-b92d7c4eabac" /><br>
+<img width="2196" height="1380" alt="Screenshot2" src="https://github.com/user-attachments/assets/41d7c5fe-c8a1-4673-a771-69e890557320" /><br>
+<img width="2196" height="1380" alt="Screenshot3" src="https://github.com/user-attachments/assets/90f4c481-99ef-42cb-bf9c-d96dfeb72c56" />
+
+
 ## 개발자
 
 - **airtaxi (Howon Lee)**
