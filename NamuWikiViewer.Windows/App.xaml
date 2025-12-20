@@ -3,6 +3,7 @@
     x:Class="NamuWikiViewer.Windows.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:CommunityToolkit.WinUI.Converters"
     xmlns:local="using:NamuWikiViewer.Windows">
     <Application.Resources>
         <ResourceDictionary>
@@ -35,6 +36,8 @@
             <Color x:Key="SystemAccentColorDark1">#00A495</Color>
             <Color x:Key="SystemAccentColorDark2">#09a87e</Color>
             <Color x:Key="SystemAccentColorDark3">#13AD65</Color>
+
+            <converters:BoolNegationConverter x:Key="BoolNegationConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
