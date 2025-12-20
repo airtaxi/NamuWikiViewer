@@ -207,6 +207,7 @@ public partial class PreferenceViewModel : ObservableObject
             if (!UsePageHistory)
             {
                 ClearPageHistories();
+                return;
             }
         }
 
