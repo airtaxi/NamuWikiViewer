@@ -103,6 +103,7 @@ public sealed partial class BrowserPage : Page
         WeakReferenceMessenger.Default.Register<FontScaleChangedMessage>(this, OnFontScaleChangedMessageReceived);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxQuerySubmittedMessage>(this, OnAutoSuggestBoxQuerySubmittedMessageReceived);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxTextChangedMessage>(this, OnAutoSuggestBoxTextChangedMessageReceived);
+        WeakReferenceMessenger.Default.Register<RandomPageRequestedMessage>(this, OnRandomPageRequestedMessageReceived);
     }
 
     public void ShowBrowserSearch()
@@ -702,4 +703,31 @@ public sealed partial class BrowserPage : Page
     }
 
     private async void OnFontScaleChangedMessageReceived(object recipient, FontScaleChangedMessage message) => await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
+
+    private async void OnRandomPageRequestedMessageReceived(object recipient, RandomPageRequestedMessage message)
+    {
+        if (!IsActive) return;
+        if (message.MainWindow != _parent.ParentWindow) return;
+
+        _parent.ParentWindow.ShowLoading("랜덤 페이지를 불러오는 중...");
+        try
+        {
+            var request = new RestRequest("/random", Method.Get);
+            var response = await s_client.ExecuteAsync(request);
+
+            if (response.ResponseUri != null)
+            {
+                var pageName = HttpUtility.UrlDecode(response.ResponseUri.AbsolutePath.Replace("/w/", ""));
+                _parent.NavigateToPage(pageName);
+            }
+            else
+            {
+                await MessageBox.ShowErrorAsync(true, _parent.ParentWindow, "랜덤 페이지를 불러오는데 실패했습니다.", "오류");
+            }
+        }
+        finally
+        {
+            _parent.ParentWindow.HideLoading();
+        }
+    }
 }
