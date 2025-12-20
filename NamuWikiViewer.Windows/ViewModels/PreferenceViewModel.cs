@@ -119,6 +119,35 @@ public partial class PreferenceViewModel : ObservableObject
         Preference = preference;
     }
 
+    public void SavePreference()
+    {
+        if (Preference == null) return;
+
+        // Update preference model
+        Preference.UsePageHistory = UsePageHistory;
+        Preference.HideWebViewScrollBar = HideWebViewScrollBar;
+        Preference.BlockAds = BlockAds;
+        Preference.HideNamuNewsCard = HideNamuNewsCard;
+        Preference.HideRecentChangesCard = HideRecentChangesCard;
+        Preference.HideRelatedSearchCard = HideRelatedSearchCard;
+        Preference.Theme = Theme;
+        Preference.DisableWebViewCache = DisableWebViewCache;
+        Preference.FontScale = FontScale;
+        Preference.BackStackDepthLimit = BackStackDepthLimit;
+
+        Configuration.SetValue("Preference", Preference);
+
+        WeakReferenceMessenger.Default.Send(new ValueChangedMessage<Preference>(Preference));
+    }
+
+    private void ClearPageHistories()
+    {
+        PageHistories.Clear();
+        Preference.PageHistories?.Clear();
+        ReversedPageHistories.Clear();
+        SavePreference();
+    }
+
     private void OnPageHistoriesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.Action == NotifyCollectionChangedAction.Add)
@@ -177,32 +206,10 @@ public partial class PreferenceViewModel : ObservableObject
         {
             if (!UsePageHistory)
             {
-                PageHistories.Clear();
-                Preference.PageHistories?.Clear();
+                ClearPageHistories();
             }
         }
 
         SavePreference();
-    }
-
-    public void SavePreference()
-    {
-        if (Preference == null) return;
-
-        // Update preference model
-        Preference.UsePageHistory = UsePageHistory;
-        Preference.HideWebViewScrollBar = HideWebViewScrollBar;
-        Preference.BlockAds = BlockAds;
-        Preference.HideNamuNewsCard = HideNamuNewsCard;
-        Preference.HideRecentChangesCard = HideRecentChangesCard;
-        Preference.HideRelatedSearchCard = HideRelatedSearchCard;
-        Preference.Theme = Theme;
-        Preference.DisableWebViewCache = DisableWebViewCache;
-        Preference.FontScale = FontScale;
-        Preference.BackStackDepthLimit = BackStackDepthLimit;
-
-        Configuration.SetValue("Preference", Preference);
-
-        WeakReferenceMessenger.Default.Send(new ValueChangedMessage<Preference>(Preference));
     }
 }
