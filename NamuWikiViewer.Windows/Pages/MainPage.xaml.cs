@@ -43,8 +43,6 @@ public sealed partial class MainPage : Page
             ParentWindow.TitleBarHomeRequested += OnParentTitleBarHomeRequested;
 
             MainFrame.Navigate(typeof(BrowserPage), (pageName, Guid.NewGuid().ToString(), this));
-
-            if (pageName != "나무위키:대문") ParentWindow.ToggleHomeButton(true);
         }
 
         DataTransferManager dataTransferManager = DataTransferManagerInterop.GetForWindow(ParentWindow.GetWindowHandle());
@@ -160,16 +158,10 @@ public sealed partial class MainPage : Page
 
         var hasBackstack = frame.BackStackDepth > 0;
         ParentWindow.ToggleBackButton(hasBackstack);
-        // ToggleHomeButton should be set at OnNavigatedTo because this method lacks navigation parameter info
+        if (e.Parameter is (string pageName, string, MainPage)) ParentWindow.ToggleHomeButton(pageName != "나무위키:대문");
 
-        if (frame.Content is BrowserPage)
-        {
-            ParentWindow.ShowSearchBar();
-        }
-        else
-        {
-            ParentWindow.HideSearchBar();
-        }
+        if (frame.Content is BrowserPage) ParentWindow.ShowSearchBar();
+        else ParentWindow.HideSearchBar();
     }
 
     private async void OnDeletePendingPageButtonClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)

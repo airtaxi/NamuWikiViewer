@@ -516,8 +516,6 @@ public sealed partial class BrowserPage : Page
 
         var cacheKey = PageName + _pageHash;
 
-        _parent.ParentWindow.ToggleHomeButton(_parent.BackStackDepth > 0 || pageName != "나무위키:대문");
-
         WeakReferenceMessenger.Default.Send(new SetAutoSuggestBoxTextMessage(_parent.ParentWindow, PageName));
 
         var disableCache = App.GlobalPreferenceViewModel.Preference.DisableWebViewCache;
