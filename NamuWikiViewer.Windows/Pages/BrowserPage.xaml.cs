@@ -1,5 +1,4 @@
-﻿using ABI.Windows.ApplicationModel.Activation;
-using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using DevWinUI;
 using Microsoft.UI.Xaml;
@@ -10,14 +9,8 @@ using NamuWikiViewer.Commons.Models;
 using NamuWikiViewer.Windows.Extensions;
 using NamuWikiViewer.Windows.Messages;
 using RestSharp;
-using System.Collections.ObjectModel;
-using System.Reflection.Metadata;
-using System.Text.Encodings.Web;
-using System.Threading.Tasks;
 using System.Web;
 using Windows.System;
-using WinRT;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace NamuWikiViewer.Windows.Pages;
 
@@ -260,6 +253,12 @@ public sealed partial class BrowserPage : Page
 
             if (currentBasePage == targetBasePage && pageName.Contains('#')) return;
 
+            if (pageName == "나무위키:대문")
+            {
+                await MessageBox.ShowInfoAsync(true, _parent.ParentWindow, "대문 페이지로 이동하려면 좌측 상단의 홈 버튼을 눌러주세요.", "알림");
+                return;
+            }
+
             _parent.NavigateToPage(pageName);
         }
         else if (url.StartsWith("https://namu.wiki/Go?q="))
@@ -277,6 +276,12 @@ public sealed partial class BrowserPage : Page
 
     private async Task ValidateAndNavigateAsync(string pageName)
     {
+        if (pageName == "나무위키:대문")
+        {
+            await MessageBox.ShowInfoAsync(true, _parent.ParentWindow, "대문 페이지로 이동하려면 좌측 상단의 홈 버튼을 눌러주세요.", "알림");
+            return;
+        }
+
         _lastQueryText = null;
         _autoSuggestCts?.Cancel();
         WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage(_parent.ParentWindow, []));
@@ -763,24 +768,27 @@ public sealed partial class BrowserPage : Page
         if (message.MainWindow != _parent.ParentWindow) return;
 
         _parent.ParentWindow.ShowLoading("랜덤 페이지를 불러오는 중...");
-        try
-        {
-            var request = new RestRequest("/random", Method.Get);
-            var response = await s_client.ExecuteAsync(request);
+        try { await RamdomRedirectAsync(); }
+        finally { _parent.ParentWindow.HideLoading(); }
+    }
 
-            if (response.ResponseUri != null)
-            {
-                var pageName = HttpUtility.UrlDecode(response.ResponseUri.AbsolutePath.Replace("/w/", ""));
-                _parent.NavigateToPage(pageName);
-            }
-            else
-            {
-                await MessageBox.ShowErrorAsync(true, _parent.ParentWindow, "랜덤 페이지를 불러오는데 실패했습니다.", "오류");
-            }
-        }
-        finally
+    private async Task RamdomRedirectAsync()
+    {
+        var request = new RestRequest("/random", Method.Get);
+        var response = await s_client.ExecuteAsync(request);
+
+        if (response.ResponseUri != null)
         {
-            _parent.ParentWindow.HideLoading();
+            var pageName = HttpUtility.UrlDecode(response.ResponseUri.AbsolutePath.Replace("/w/", ""));
+
+            if (pageName == "나무위키:대문")
+            {
+                await RamdomRedirectAsync();
+                return;
+            }
+
+            _parent.NavigateToPage(pageName);
         }
+        else await MessageBox.ShowErrorAsync(true, _parent.ParentWindow, "랜덤 페이지를 불러오는데 실패했습니다.", "오류");
     }
 }
