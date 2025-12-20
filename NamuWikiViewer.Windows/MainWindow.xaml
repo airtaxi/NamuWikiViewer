@@ -31,7 +31,6 @@
             BackRequested="OnAppTitleBarBackRequested"
             IsPaneToggleButtonVisible="True"
             PaneToggleRequested="OnAppTitleBarPaneToggleRequested">
-            <!--  Force Large Size  -->
             <TitleBar.LeftHeader>
                 <Button
                     x:Name="HomeButton"
@@ -45,6 +44,7 @@
                     <FontIcon FontSize="14" Glyph="&#xE80F;" />
                 </Button>
             </TitleBar.LeftHeader>
+            <!--  Force Large Size  -->
             <TitleBar.Content>
                 <StackPanel
                     VerticalAlignment="Center"
