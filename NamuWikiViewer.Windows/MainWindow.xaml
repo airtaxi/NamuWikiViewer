@@ -9,7 +9,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:winuiex="using:WinUIEx"
     Title="나무위키 뷰어"
-    MinWidth="800"
+    MinWidth="900"
     MinHeight="400"
     Closed="OnWindowClosed"
     mc:Ignorable="d">
