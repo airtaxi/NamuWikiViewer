@@ -39,20 +39,21 @@
             <ToggleSwitch IsOn="{x:Bind root:App.GlobalPreferenceViewModel.DisableWebViewCache, Mode=TwoWay}" />
         </dev:SettingsCard>
 
-        <dev:SettingsExpander Header="뒤로가기 목록 유지 갯수" Description="유지할 페이지 수를 제한해 메모리 사용량을 관리합니다. 너무 크게 설정하면 메모리 사용량이 매우 높아질 수 있습니다.">
-            <StackPanel Spacing="8">
-                <ToggleSwitch x:Name="BackStackLimitToggle" Header="사용" IsOn="{x:Bind root:App.GlobalPreferenceViewModel.UseBackStackDepthLimit, Mode=TwoWay}" />
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsEnabled="{Binding IsOn, ElementName=BackStackLimitToggle}">
-                    <TextBlock VerticalAlignment="Center" Text="유지할 페이지 수" />
+        <dev:SettingsExpander Description="유지할 페이지 수를 제한해 메모리 사용량을 관리합니다." Header="뒤로가기 목록 유지 갯수">
+            <ToggleSwitch IsOn="{x:Bind root:App.GlobalPreferenceViewModel.UseBackStackDepthLimit, Mode=TwoWay}" />
+            <dev:SettingsExpander.Items>
+                <dev:SettingsCard
+                    Description="값을 크게 설정할수록 브라우저 인스턴스를 많이 유지해 메모리 사용량이 매우 높아질 수 있습니다."
+                    Header="유지할 페이지 수"
+                    IsEnabled="{x:Bind root:App.GlobalPreferenceViewModel.UseBackStackDepthLimit, Mode=OneWay}">
                     <NumberBox
-                        Minimum="{x:Bind root:Constants.MinBackStackDepth}"
                         Maximum="{x:Bind root:Constants.MaxBackStackDepth}"
-                        Value="{x:Bind root:App.GlobalPreferenceViewModel.BackStackDepthLimitValue, Mode=TwoWay}"
+                        Minimum="{x:Bind root:Constants.MinBackStackDepth}"
+                        SmallChange="1"
                         SpinButtonPlacementMode="Inline"
-                        SmallChange="1" />
-                </StackPanel>
-                <TextBlock Text="값을 크게 설정할수록 브라우저 인스턴스를 많이 유지해 메모리 사용량이 매우 높아질 수 있습니다." TextWrapping="Wrap" />
-            </StackPanel>
+                        Value="{x:Bind root:App.GlobalPreferenceViewModel.BackStackDepthLimitValue, Mode=TwoWay}" />
+                </dev:SettingsCard>
+            </dev:SettingsExpander.Items>
         </dev:SettingsExpander>
     </StackPanel>
 </ContentDialog>
