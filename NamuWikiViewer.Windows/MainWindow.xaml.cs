@@ -1,6 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging.Messages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using NamuWikiViewer.Commons.Models;
 using NamuWikiViewer.Windows.Messages;
 using NamuWikiViewer.Windows.Pages;
 using System.Collections.ObjectModel;
@@ -32,8 +34,29 @@ public sealed partial class MainWindow : WindowEx
 
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxItemsSourceMessage>(this, OnAutoSuggestBoxItemsSourceMessageReceived);
         WeakReferenceMessenger.Default.Register<SetAutoSuggestBoxTextMessage>(this, OnSetAutoSuggestBoxTextMessageReceived);
+        WeakReferenceMessenger.Default.Register<ValueChangedMessage<Preference>>(this, OnPreferenceChanged);
+
+        ApplyTheme(App.GlobalPreferenceViewModel.Preference.Theme);
 
         MainFrame.Navigate(typeof(MainPage), (this, pageToOpen));
+    }
+
+    private void OnPreferenceChanged(object recipient, ValueChangedMessage<Preference> message)
+    {
+        ApplyTheme(message.Value.Theme);
+    }
+
+    private void ApplyTheme(AppTheme theme)
+    {
+        if (Content is FrameworkElement rootElement)
+        {
+            rootElement.RequestedTheme = theme switch
+            {
+                AppTheme.Light => ElementTheme.Light,
+                AppTheme.Dark => ElementTheme.Dark,
+                _ => ElementTheme.Default,
+            };
+        }
     }
 
     public void ToggleHomeButton(bool show) => HomeButton.Visibility = show ? Visibility.Visible : Visibility.Collapsed;

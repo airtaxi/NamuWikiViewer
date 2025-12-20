@@ -242,6 +242,22 @@ public sealed partial class BrowserPage : Page
         catch (ObjectDisposedException) { } // WebView might be disposed
     }
 
+    private async Task UpdateThemeAsync(Preference preference)
+    {
+        if (WebView?.CoreWebView2 == null) return;
+
+        try
+        {
+            WebView.CoreWebView2.Profile.PreferredColorScheme = preference.Theme switch
+            {
+                AppTheme.Light => CoreWebView2PreferredColorScheme.Light,
+                AppTheme.Dark => CoreWebView2PreferredColorScheme.Dark,
+                _ => CoreWebView2PreferredColorScheme.Auto
+            };
+        }
+        catch { }
+    }
+
     private async Task ProcessUrlAsync(string url)
     {
         if (url.StartsWith(Constants.BaseUrl))
@@ -443,6 +459,41 @@ public sealed partial class BrowserPage : Page
         catch (ObjectDisposedException) { } // WebView might be disposed
     }
 
+    private async Task UpdateSidebarsVisibilityAsync(Preference preference)
+    {
+        try
+        {
+            if (WebView?.CoreWebView2 == null) return;
+
+            var script = $$"""
+                (function() {
+                    var style = document.getElementById('hideSidebarsStyle');
+                    if (!style) {
+                        style = document.createElement('style');
+                        style.id = 'hideSidebarsStyle';
+                        document.head.appendChild(style);
+                    }
+                    
+                    var css = '';
+                    if ({{preference.HideNamuNewsCard.ToString().ToLower()}}) {
+                        css += '.NorrV8sP .NTtBbjTA { display: none !important; } ';
+                    }
+                    if ({{preference.HideRecentChangesCard.ToString().ToLower()}}) {
+                        css += '.P9TX0OIK > .NTtBbjTA { display: none !important; } ';
+                    }
+                    if ({{preference.HideRelatedSearchCard.ToString().ToLower()}}) {
+                        css += '.XuTXMj-K { display: none !important; } ';
+                    }
+                    
+                    style.innerHTML = css;
+                })();
+            """;
+
+            await WebView.ExecuteScriptAsync(script);
+        }
+        catch (ObjectDisposedException) { }
+    }
+
     private async Task QueryAutoSuggestionAsync(string queryText)
     {
         if (string.IsNullOrWhiteSpace(queryText))
@@ -536,7 +587,9 @@ public sealed partial class BrowserPage : Page
 
             await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
             await UpdateAdsVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
+            await UpdateSidebarsVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
             await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
+            await UpdateThemeAsync(App.GlobalPreferenceViewModel.Preference);
 
             WebViewContainer.Content = WebView;
         }
@@ -636,7 +689,9 @@ public sealed partial class BrowserPage : Page
         // Update DOM based on preferences
         await UpdateScrollBarVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
         await UpdateAdsVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
+        await UpdateSidebarsVisibilityAsync(App.GlobalPreferenceViewModel.Preference);
         await UpdateFontScaleAsync(App.GlobalPreferenceViewModel.Preference);
+        await UpdateThemeAsync(App.GlobalPreferenceViewModel.Preference);
 
         WebView.Visibility = Visibility.Visible;
     }
@@ -729,6 +784,8 @@ public sealed partial class BrowserPage : Page
         var newPreference = message.Value;
         await UpdateScrollBarVisibilityAsync(newPreference);
         await UpdateAdsVisibilityAsync(newPreference);
+        await UpdateSidebarsVisibilityAsync(newPreference);
+        await UpdateThemeAsync(newPreference);
     }
 
     private async void OnAutoSuggestBoxQuerySubmittedMessageReceived(object recipient, AutoSuggestBoxQuerySubmittedMessage message)

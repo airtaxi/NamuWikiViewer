@@ -8,6 +8,14 @@ public class Preference
 
     public bool BlockAds { get; set; } = false;
 
+    public bool HideNamuNewsCard { get; set; } = false;
+
+    public bool HideRecentChangesCard { get; set; } = false;
+
+    public bool HideRelatedSearchCard { get; set; } = false;
+
+    public AppTheme Theme { get; set; } = AppTheme.System;
+
     public bool DisableWebViewCache { get; set; } = false;
 
     public List<PendingPage> PendingPages { get; set; } = [];

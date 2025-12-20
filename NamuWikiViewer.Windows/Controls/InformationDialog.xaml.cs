@@ -1,10 +1,13 @@
-﻿using Microsoft.UI.Xaml;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging.Messages;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using NamuWikiViewer.Commons.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -23,6 +26,27 @@ public sealed partial class InformationDialog : ContentDialog
     {
         InitializeComponent();
         VersionTextBlock.Text = GetAppVersion();
+
+        ApplyTheme(App.GlobalPreferenceViewModel.Preference.Theme);
+
+        WeakReferenceMessenger.Default.Register<ValueChangedMessage<Preference>>(this, OnPreferenceChanged);
+
+        Closed += (s, e) => WeakReferenceMessenger.Default.UnregisterAll(this);
+    }
+
+    private void OnPreferenceChanged(object recipient, ValueChangedMessage<Preference> message)
+    {
+        ApplyTheme(message.Value.Theme);
+    }
+
+    private void ApplyTheme(AppTheme theme)
+    {
+        RequestedTheme = theme switch
+        {
+            AppTheme.Light => ElementTheme.Light,
+            AppTheme.Dark => ElementTheme.Dark,
+            _ => ElementTheme.Default,
+        };
     }
 
     private static string GetAppVersion()

@@ -7,6 +7,7 @@
     xmlns:dev="using:DevWinUI"
     xmlns:local="using:NamuWikiViewer.Windows.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:NamuWikiViewer.Commons.Models"
     xmlns:root="using:NamuWikiViewer.Windows"
     xmlns:viewmodels="using:NamuWikiViewer.Windows.ViewModels"
     Title="설정"
@@ -40,6 +41,42 @@
                     <FontIcon Glyph="&#xE733;" />
                 </dev:SettingsCard.HeaderIcon>
                 <ToggleSwitch IsOn="{x:Bind root:App.GlobalPreferenceViewModel.BlockAds, Mode=TwoWay}" />
+            </dev:SettingsCard>
+
+            <dev:SettingsCard Description="이 옵션을 활성화 하면 나무뉴스 카드를 보여주지 않습니다." Header="나무뉴스 카드 숨김">
+                <dev:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE12A;" />
+                </dev:SettingsCard.HeaderIcon>
+                <ToggleSwitch IsOn="{x:Bind root:App.GlobalPreferenceViewModel.HideNamuNewsCard, Mode=TwoWay}" />
+            </dev:SettingsCard>
+
+            <dev:SettingsCard Description="이 옵션을 활성화 하면 최근 변경 카드를 보여주지 않습니다." Header="최근 변경 카드 숨김">
+                <dev:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE11A;" />
+                </dev:SettingsCard.HeaderIcon>
+                <ToggleSwitch IsOn="{x:Bind root:App.GlobalPreferenceViewModel.HideRecentChangesCard, Mode=TwoWay}" />
+            </dev:SettingsCard>
+
+            <dev:SettingsCard Description="이 옵션을 활성화 하면 관련 검색어 카드를 보여주지 않습니다." Header="관련 검색어 카드 숨김">
+                <dev:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE721;" />
+                </dev:SettingsCard.HeaderIcon>
+                <ToggleSwitch IsOn="{x:Bind root:App.GlobalPreferenceViewModel.HideRelatedSearchCard, Mode=TwoWay}" />
+            </dev:SettingsCard>
+
+            <dev:SettingsCard Description="앱의 테마를 설정합니다." Header="테마">
+                <dev:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE790;" />
+                </dev:SettingsCard.HeaderIcon>
+                <ComboBox
+                    ItemsSource="{x:Bind root:App.GlobalPreferenceViewModel.Themes}"
+                    SelectedItem="{x:Bind root:App.GlobalPreferenceViewModel.Theme, Mode=TwoWay}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:AppTheme">
+                            <TextBlock Text="{x:Bind Converter={StaticResource AppThemeToStringConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
             </dev:SettingsCard>
 
             <dev:SettingsCard Description="이 옵션을 활성화 하면 페이지 이동 시 브라우저 인스턴스를 저장하지 않습니다. 단, 페이지 이동 시 로딩 시간이 길어지며 스크롤 위치가 저장되지 않습니다. (메모리 용량 낮은 경우 권장)" Header="페이지 이동 시 브라우저 인스턴스 저장 안함">

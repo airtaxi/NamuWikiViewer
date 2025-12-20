@@ -25,6 +25,18 @@ public partial class PreferenceViewModel : ObservableObject
     public partial bool BlockAds { get; set; }
 
     [ObservableProperty]
+    public partial bool HideNamuNewsCard { get; set; }
+
+    [ObservableProperty]
+    public partial bool HideRecentChangesCard { get; set; }
+
+    [ObservableProperty]
+    public partial bool HideRelatedSearchCard { get; set; }
+
+    [ObservableProperty]
+    public partial AppTheme Theme { get; set; }
+
+    [ObservableProperty]
     public partial bool DisableWebViewCache { get; set; }
 
     [ObservableProperty]
@@ -73,6 +85,8 @@ public partial class PreferenceViewModel : ObservableObject
 
     public ObservableCollection<PageHistory> ReversedPageHistories { get; }
 
+    public ObservableCollection<AppTheme> Themes { get; } = new(Enum.GetValues<AppTheme>());
+
     public PreferenceViewModel()
     {
         var preference = Configuration.GetValue<Preference>("Preference") ?? new();
@@ -81,6 +95,10 @@ public partial class PreferenceViewModel : ObservableObject
         UsePageHistory = preference.UsePageHistory;
         HideWebViewScrollBar = preference.HideWebViewScrollBar;
         BlockAds = preference.BlockAds;
+        HideNamuNewsCard = preference.HideNamuNewsCard;
+        HideRecentChangesCard = preference.HideRecentChangesCard;
+        HideRelatedSearchCard = preference.HideRelatedSearchCard;
+        Theme = preference.Theme;
         DisableWebViewCache = preference.DisableWebViewCache;
         FontScale = preference.FontScale;
         BackStackDepthLimit = preference.BackStackDepthLimit ?? Constants.DefaultBackStackDepth;
@@ -175,6 +193,10 @@ public partial class PreferenceViewModel : ObservableObject
         Preference.UsePageHistory = UsePageHistory;
         Preference.HideWebViewScrollBar = HideWebViewScrollBar;
         Preference.BlockAds = BlockAds;
+        Preference.HideNamuNewsCard = HideNamuNewsCard;
+        Preference.HideRecentChangesCard = HideRecentChangesCard;
+        Preference.HideRelatedSearchCard = HideRelatedSearchCard;
+        Preference.Theme = Theme;
         Preference.DisableWebViewCache = DisableWebViewCache;
         Preference.FontScale = FontScale;
         Preference.BackStackDepthLimit = BackStackDepthLimit;

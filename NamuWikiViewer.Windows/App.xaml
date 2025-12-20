@@ -4,7 +4,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="using:CommunityToolkit.WinUI.Converters"
-    xmlns:local="using:NamuWikiViewer.Windows">
+    xmlns:local="using:NamuWikiViewer.Windows"
+    xmlns:localConverters="using:NamuWikiViewer.Windows.Converters">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -38,6 +39,7 @@
             <Color x:Key="SystemAccentColorDark3">#13AD65</Color>
 
             <converters:BoolNegationConverter x:Key="BoolNegationConverter" />
+            <localConverters:AppThemeToStringConverter x:Key="AppThemeToStringConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
