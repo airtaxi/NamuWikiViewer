@@ -74,7 +74,7 @@
                         BorderThickness="0"
                         Click="OnRandomPageButtonClicked"
                         Foreground="{StaticResource ReverseThemeColor}">
-                        <FontIcon FontSize="14" Glyph="&#xE91C;" />
+                        <FontIcon FontSize="14" Glyph="&#xE8B1;" />
                     </Button>
                 </StackPanel>
             </TitleBar.RightHeader>
@@ -96,16 +96,14 @@
                 IsBlurEnabled="True"
                 IsTintEnabled="False" />
 
-            <StackPanel Spacing="8">
-                <ProgressRing
-                    Width="100"
-                    Height="100"
-                    Foreground="{ThemeResource SystemAccentColor}"
-                    IsIndeterminate="True" />
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="8">
+                <dev:LoadingIndicator Foreground="{ThemeResource SystemAccentColor}" Mode="Arcs" />
                 <TextBlock
                     x:Name="LoadingTextBlock"
                     HorizontalAlignment="Center"
-                    FontSize="16"
                     FontWeight="Bold" />
             </StackPanel>
         </Grid>
