@@ -84,6 +84,12 @@ public sealed partial class MainWindow : WindowEx
     private void OnAppTitleBarPaneToggleRequested(TitleBar sender, object args) => TitleBarPaneToggleRequested?.Invoke(this, args);
     private void OnAppTitleBarHomeClicked(object sender, RoutedEventArgs e) => TitleBarHomeRequested?.Invoke(this, e);
 
+    private void OnRandomPageButtonClicked(object sender, RoutedEventArgs e)
+    {
+        // Logic to request a random page
+        WeakReferenceMessenger.Default.Send(new RandomPageRequestedMessage(this));
+    }
+
     private void OnWindowClosed(object sender, WindowEventArgs args) => BrowserPage.PurgeWebViewCacheForWindow(this);
 
     private void OnTitleBarAutoSuggestBoxQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) => WeakReferenceMessenger.Default.Send(new AutoSuggestBoxQuerySubmittedMessage(this, args.QueryText));
