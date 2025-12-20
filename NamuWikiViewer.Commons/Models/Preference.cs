@@ -15,4 +15,6 @@ public class Preference
     public List<PageHistory> PageHistories { get; set; } = [];
 
     public double FontScale { get; set; } = 1.0;
+
+    public int? BackStackDepthLimit { get; set; } = 10;
 }

@@ -31,6 +31,31 @@ public sealed partial class BrowserPage : Page
 
     private static readonly RestClient s_client = new("https://namu.wiki/");
 
+    private static void RemoveCache(MainWindow mainWindow, string key)
+    {
+        if (PageCache.TryGetValue(key, out var page))
+        {
+            DisposeCaches(mainWindow, [new(key, page)]);
+        }
+        else if (MainWindowWebViewKeys.TryGetValue(mainWindow, out var keys))
+        {
+            keys.Remove(key);
+        }
+    }
+
+    private static void TrimCacheForWindow(MainWindow mainWindow, int limit, string currentKey)
+    {
+        if (!MainWindowWebViewKeys.TryGetValue(mainWindow, out var keys)) return;
+
+        while (keys.Count > limit)
+        {
+            var key = keys.FirstOrDefault(k => k != currentKey) ?? keys.First();
+            if (key == currentKey && keys.Count <= 1) break;
+
+            RemoveCache(mainWindow, key);
+        }
+    }
+
     public static void PurgeWebViewCacheForWindow(MainWindow window)
     {
         if (MainWindowWebViewKeys.TryGetValue(window, out var keys))
@@ -104,6 +129,29 @@ public sealed partial class BrowserPage : Page
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxQuerySubmittedMessage>(this, OnAutoSuggestBoxQuerySubmittedMessageReceived);
         WeakReferenceMessenger.Default.Register<AutoSuggestBoxTextChangedMessage>(this, OnAutoSuggestBoxTextChangedMessageReceived);
         WeakReferenceMessenger.Default.Register<RandomPageRequestedMessage>(this, OnRandomPageRequestedMessageReceived);
+    }
+
+    private void TrimBackStack(string cacheKey)
+    {
+        var limit = App.GlobalPreferenceViewModel.Preference.BackStackDepthLimit;
+        if (limit is null) return;
+
+        var frame = _parent.AppFrame;
+        while (frame.BackStackDepth > limit)
+        {
+            var entry = frame.BackStack.FirstOrDefault();
+            frame.BackStack.RemoveAt(0);
+
+            if (entry?.Parameter is (string pageName, string pageHash, MainPage mainPage))
+            {
+                RemoveCache(mainPage.ParentWindow, pageName + pageHash);
+            }
+        }
+
+        if (!App.GlobalPreferenceViewModel.Preference.DisableWebViewCache)
+        {
+            TrimCacheForWindow(_parent.ParentWindow, limit.Value, cacheKey);
+        }
     }
 
     public void ShowBrowserSearch()
@@ -466,13 +514,15 @@ public sealed partial class BrowserPage : Page
         _pageHash = pageHash;
         _parent = mainPage;
 
+        var cacheKey = PageName + _pageHash;
+
         _parent.ParentWindow.ToggleHomeButton(_parent.BackStackDepth > 0 || pageName != "나무위키:대문");
 
         WeakReferenceMessenger.Default.Send(new SetAutoSuggestBoxTextMessage(_parent.ParentWindow, PageName));
 
         var disableCache = App.GlobalPreferenceViewModel.Preference.DisableWebViewCache;
 
-        if (!disableCache && PageCache.TryGetValue(PageName + _pageHash, out var cachedPage) && cachedPage != null)
+        if (!disableCache && PageCache.TryGetValue(cacheKey, out var cachedPage) && cachedPage != null)
         {
             WebView = cachedPage.WebView;
 
@@ -496,11 +546,11 @@ public sealed partial class BrowserPage : Page
 
             if (!disableCache)
             {
-                PageCache[PageName + _pageHash] = this;
+                PageCache[cacheKey] = this;
 
                 // Track WebView keys for the parent MainWindow (to prevent memory leaks)
                 if (!MainWindowWebViewKeys.ContainsKey(_parent.ParentWindow)) MainWindowWebViewKeys[_parent.ParentWindow] = [];
-                MainWindowWebViewKeys[_parent.ParentWindow].Add(PageName + _pageHash);
+                MainWindowWebViewKeys[_parent.ParentWindow].Add(cacheKey);
             }
 
             await WebView.EnsureCoreWebView2Async();
@@ -517,11 +567,15 @@ public sealed partial class BrowserPage : Page
         WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
         WebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
         WebView.CoreWebView2.ContextMenuRequested += OnContextMenuRequested;
+
+        TrimBackStack(cacheKey);
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
+
+        var cacheKey = PageName + _pageHash;
 
         if (WebView != null)
         {
@@ -541,7 +595,8 @@ public sealed partial class BrowserPage : Page
 
         if (e.NavigationMode == NavigationMode.Back)
         {
-            PageCache.Remove(PageName + _pageHash);
+            PageCache.Remove(cacheKey);
+            if (MainWindowWebViewKeys.TryGetValue(_parent.ParentWindow, out var keys)) keys.Remove(cacheKey);
             WebView?.Close();
         }
     }

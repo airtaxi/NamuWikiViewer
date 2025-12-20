@@ -9,4 +9,8 @@ internal static class Constants
     internal const double MaxFontScale = 3.0;
     internal const double MinFontScale = 0.3;
     internal const string BaseUrl = "https://namu.wiki/w/";
+
+    internal const int DefaultBackStackDepth = 10;
+    internal const int MinBackStackDepth = 1;
+    internal const int MaxBackStackDepth = 50;
 }

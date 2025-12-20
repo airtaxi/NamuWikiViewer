@@ -2,7 +2,9 @@
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using NamuWikiViewer.Commons.Models;
+using NamuWikiViewer.Windows;
 using SocialServiceWorkerServiceRecordAutomation;
+using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -28,6 +30,43 @@ public partial class PreferenceViewModel : ObservableObject
     [ObservableProperty]
     public partial double FontScale { get; set; }
 
+    public int? BackStackDepthLimit
+    {
+        get => field;
+        set
+        {
+            int? clamped = value;
+            if (clamped.HasValue)
+            {
+                clamped = Math.Clamp(clamped.Value, Constants.MinBackStackDepth, Constants.MaxBackStackDepth);
+            }
+
+            if (SetProperty(ref field, clamped))
+            {
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(UseBackStackDepthLimit)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(BackStackDepthLimitValue)));
+            }
+        }
+    }
+
+    public bool UseBackStackDepthLimit
+    {
+        get => BackStackDepthLimit.HasValue;
+        set
+        {
+            if (value == UseBackStackDepthLimit) return;
+
+            BackStackDepthLimit = value ? BackStackDepthLimit ?? Constants.DefaultBackStackDepth : null;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(UseBackStackDepthLimit)));
+        }
+    }
+
+    public double BackStackDepthLimitValue
+    {
+        get => BackStackDepthLimit ?? Constants.DefaultBackStackDepth;
+        set => BackStackDepthLimit = (int)Math.Round(Math.Clamp(value, Constants.MinBackStackDepth, Constants.MaxBackStackDepth));
+    }
+
     public ObservableCollection<PendingPage> PendingPages { get; }
 
     public ObservableCollection<PageHistory> PageHistories { get; }
@@ -44,6 +83,12 @@ public partial class PreferenceViewModel : ObservableObject
         BlockAds = preference.BlockAds;
         DisableWebViewCache = preference.DisableWebViewCache;
         FontScale = preference.FontScale;
+        BackStackDepthLimit = preference.BackStackDepthLimit ?? Constants.DefaultBackStackDepth;
+
+        if (!preference.BackStackDepthLimit.HasValue)
+        {
+            UseBackStackDepthLimit = false;
+        }
 
         PendingPages = new(preference.PendingPages ?? []);
         PendingPages.CollectionChanged += OnPendingPagesCollectionChanged;
@@ -132,6 +177,7 @@ public partial class PreferenceViewModel : ObservableObject
         Preference.BlockAds = BlockAds;
         Preference.DisableWebViewCache = DisableWebViewCache;
         Preference.FontScale = FontScale;
+        Preference.BackStackDepthLimit = BackStackDepthLimit;
 
         Configuration.SetValue("Preference", Preference);
 
