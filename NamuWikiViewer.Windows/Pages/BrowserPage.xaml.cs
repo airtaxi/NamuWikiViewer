@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Web.WebView2.Core;
 using NamuWikiViewer.Commons.Models;
 using NamuWikiViewer.Windows.Extensions;
+using NamuWikiViewer.Windows.Helpers;
 using NamuWikiViewer.Windows.Messages;
 using RestSharp;
 using System.Web;
@@ -190,10 +191,42 @@ public sealed partial class BrowserPage : Page
                         var targetUrl = target.href.split('#')[0];
                         
                         // If it's a hash navigation on the same page, allow default behavior
-                        if (currentUrl === targetUrl && target.href.includes('#')) {
+                        if (currentUrl === targetUrl && target.href.includes('#') && !target.href.includes('#fn-')) {
                             return true;
                         }
-                        
+
+                        // Handle footnote clicks
+                        if (currentUrl === targetUrl && target.hash && target.hash.startsWith('#fn-')) {
+                             e.preventDefault();
+                             e.stopPropagation();
+                             // Decode the hash to handle non-ASCII characters (e.g. Korean)
+                             var fnId = decodeURIComponent(target.hash.substring(1));
+                             // Try finding element with decoded ID first
+                             var fnElem = document.getElementById(fnId);
+                             
+                             // If not found, try with the raw ID (just in case)
+                             if (!fnElem) {
+                                 fnElem = document.getElementById(target.hash.substring(1));
+                             }
+
+                             if (fnElem) {
+                                 var content = fnElem.innerHTML;
+
+                                 // NamuWiki often uses empty spans as anchors for footnotes
+                                 if ((!content || content.trim() === '') && fnElem.parentElement) {
+                                     content = fnElem.parentElement.innerHTML;
+                                 }
+
+                                 var message = {
+                                     type: 'footnote',
+                                     id: fnId,
+                                     content: content
+                                 };
+                                 window.chrome.webview.postMessage(JSON.stringify(message));
+                             }
+                             return false;
+                        }
+
                         e.preventDefault();
                         e.stopPropagation();
                         window.chrome.webview.postMessage(target.href);
@@ -560,6 +593,89 @@ public sealed partial class BrowserPage : Page
         catch { }
     }
 
+    private async Task ShowFootnoteDialog(string id, string content)
+    {
+        var richTextBlock = new RichTextBlock();
+        ContentDialog dialog = null;
+
+        HtmlToRichTextBlock.Convert(content, richTextBlock, (pageName) =>
+        {
+            dialog?.Hide();
+            _parent.NavigateToPage(pageName);
+        }, async (targetId) =>
+        {
+            dialog?.Hide();
+            
+            // Check if it is a footnote reference (#fn-) or a backlink (#rfn-)
+            // If it starts with 'fn-', it's a footnote, so we show its content.
+            // If it starts with 'rfn-', it's a backlink, so we just scroll to it.
+            
+            if (targetId.StartsWith("fn-"))
+            {
+                var script = $$"""
+                    (function() {
+                        var fnId = '{{targetId}}';
+                        var fnElem = document.getElementById(fnId);
+                        if (fnElem) {
+                            var content = fnElem.innerHTML;
+                            if ((!content || content.trim() === '') && fnElem.parentElement) {
+                                content = fnElem.parentElement.innerHTML;
+                            }
+                            var message = {
+                                type: 'footnote',
+                                id: fnId,
+                                content: content
+                            };
+                            window.chrome.webview.postMessage(JSON.stringify(message));
+                        }
+                    })();
+                """;
+                await WebView.ExecuteScriptAsync(script);
+            }
+            else
+            {
+                // For backlinks (rfn-) or other anchors, just scroll
+                var script = $$"""
+                    (function() {
+                        var id = '{{targetId}}';
+                        var element = document.getElementById(id);
+                        if (element) {
+                            element.scrollIntoView();
+                        }
+                    })();
+                """;
+                await WebView.ExecuteScriptAsync(script);
+            }
+        });
+
+        dialog = new ContentDialog
+        {
+            Title = "각주",
+            Content = new ScrollViewer { Content = richTextBlock },
+            CloseButtonText = "닫기",
+            PrimaryButtonText = "각주 보기",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = this.XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            // Use history.pushState to change hash without triggering navigation interception or page reload
+            // and then scroll to the element
+            var script = $$"""
+                (function() {
+                    var id = '{{id}}';
+                    var element = document.getElementById(id);
+                    if (element) {
+                        element.scrollIntoView();
+                    }
+                })();
+            """;
+            await WebView.ExecuteScriptAsync(script);
+        }
+    }
+
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
@@ -707,7 +823,9 @@ public sealed partial class BrowserPage : Page
                 if (_autoSuggestCts?.IsCancellationRequested == true) return;
 
                 var node = System.Text.Json.Nodes.JsonNode.Parse(message);
-                if (node?["type"]?.GetValue<string>() == "suggestion")
+                var type = node?["type"]?.GetValue<string>();
+
+                if (type == "suggestion")
                 {
                     var query = node["query"]?.GetValue<string>();
                     if (query == _lastQueryText)
@@ -725,6 +843,15 @@ public sealed partial class BrowserPage : Page
                         }
 
                         WeakReferenceMessenger.Default.Send(new AutoSuggestBoxItemsSourceMessage(_parent.ParentWindow, newItems));
+                    }
+                }
+                else if (type == "footnote")
+                {
+                    var id = node["id"]?.GetValue<string>();
+                    var content = node["content"]?.GetValue<string>();
+                    if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(content))
+                    {
+                        await ShowFootnoteDialog(id, content);
                     }
                 }
             }
