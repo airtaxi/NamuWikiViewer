@@ -735,6 +735,7 @@ public sealed partial class BrowserPage : Page
         }
 
         WebView.CoreWebView2.DOMContentLoaded += OnDOMContentLoaded;
+        WebView.CoreWebView2.SourceChanged += OnSourceChanged;
         WebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
         WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
         WebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
@@ -810,6 +811,21 @@ public sealed partial class BrowserPage : Page
         await UpdateThemeAsync(App.GlobalPreferenceViewModel.Preference);
 
         WebView.Visibility = Visibility.Visible;
+    }
+
+    public async void OnSourceChanged(CoreWebView2 sender, CoreWebView2SourceChangedEventArgs args)
+    {
+        var url = sender.Source;
+        if (url.StartsWith(Constants.BaseUrl))
+        {
+            var pageName = url.Substring(Constants.BaseUrl.Length);
+            pageName = HttpUtility.UrlDecode(pageName);
+            if (pageName.Contains('?')) pageName = pageName.Split('?')[0];
+            if (pageName.Contains('#')) pageName = pageName.Split('#')[0];
+
+            // Update AutoSuggestBox text
+            WeakReferenceMessenger.Default.Send(new SetAutoSuggestBoxTextMessage(_parent.ParentWindow, pageName));
+        }
     }
 
     public async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
