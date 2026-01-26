@@ -474,15 +474,27 @@ public sealed partial class BrowserPage : Page
                         document.head.appendChild(style);
                     }
                     
-                    var css = '';
-                    if ({{preference.HideNamuNewsCard.ToString().ToLower()}}) {
-                        css += '.NorrV8sP .NTtBbjTA { display: none !important; } ';
+                    // Find the class name dynamically by looking for the second anchor with RecentChanges href
+                    var recentChangesLinks = document.querySelectorAll('a[href*="RecentChanges"]');
+                    var sidebarClassName = '';
+                    if (recentChangesLinks.length > 1) {
+                        var parentDiv = recentChangesLinks[1].closest('div[class]');
+                        if (parentDiv && parentDiv.className) {
+                            sidebarClassName = parentDiv.className.split(' ')[0];
+                        }
                     }
-                    if ({{preference.HideRecentChangesCard.ToString().ToLower()}}) {
-                        css += '.P9TX0OIK > .NTtBbjTA { display: none !important; } ';
+                    
+                    var css = '';
+                    if (sidebarClassName) {
+                        if ({{preference.HideNamuNewsCard.ToString().ToLower()}}) {
+                            css += '.' + sidebarClassName + ':not(:has(a[href*="RecentChanges"])) { display: none !important; } ';
+                        }
+                        if ({{preference.HideRecentChangesCard.ToString().ToLower()}}) {
+                            css += '.' + sidebarClassName + ':has(a[href*="RecentChanges"]) { display: none !important; } ';
+                        }
                     }
                     if ({{preference.HideRelatedSearchCard.ToString().ToLower()}}) {
-                        css += '.XuTXMj-K { display: none !important; } ';
+                        css += '#relatedsearches1 { display: none !important; } ';
                     }
                     
                     style.innerHTML = css;
