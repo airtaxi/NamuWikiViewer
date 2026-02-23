@@ -519,11 +519,13 @@ public sealed partial class BrowserPage : Page
                     
                     var css = '';
                     if (sidebarClassName) {
+                        var escapedClass = CSS.escape(sidebarClassName);
+
                         if ({{preference.HideNamuNewsCard.ToString().ToLower()}}) {
-                            css += '.' + sidebarClassName + ':not(:has(a[href*="RecentChanges"])) { display: none !important; } ';
+                            css += '.' + escapedClass + ':not(:has(a[href*="RecentChanges"])) { display: none !important; } ';
                         }
                         if ({{preference.HideRecentChangesCard.ToString().ToLower()}}) {
-                            css += '.' + sidebarClassName + ':has(a[href*="RecentChanges"]) { display: none !important; } ';
+                            css += '.' + escapedClass + ':has(a[href*="RecentChanges"]) { display: none !important; } ';
                         }
                     }
                     if ({{preference.HideRelatedSearchCard.ToString().ToLower()}}) {
