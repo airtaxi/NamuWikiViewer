@@ -4,10 +4,6 @@ using Microsoft.UI.Xaml;
 
 namespace NamuWikiViewer.Windows;
 
-/// <summary>
-/// 단일 인스턴스 실행을 보장하는 커스텀 진입점.
-/// Named Mutex로 기존 인스턴스를 감지하고, Named Pipe로 활성화 신호를 전달합니다.
-/// </summary>
 static class Program
 {
     internal const string MutexName = "NamuWikiViewer_SingleInstance_Mutex";
@@ -45,7 +41,7 @@ static class Program
         }
         catch
         {
-            // 기존 인스턴스에 연결할 수 없는 경우 조용히 종료
+            // Will be closed silently if the existing instance is not responding or pipe connection fails.
         }
     }
 }

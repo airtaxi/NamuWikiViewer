@@ -23,10 +23,6 @@ public partial class App : Application
         _window.Activate();
     }
 
-    /// <summary>
-    /// Named Pipe 서버를 통해 새 인스턴스의 활성화 요청을 수신합니다.
-    /// 요청 수신 시 UI 스레드에서 새 MainWindow를 생성하고 활성화합니다.
-    /// </summary>
     private async Task ListenForNewInstancesAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
